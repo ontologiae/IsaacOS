@@ -316,18 +316,11 @@ ul.auto-toc {
 <body>
 <div class="document" id="attempto-controlled-english">
 <h1 class="title">Attempto Controlled English</h1>
-<h2 class="subtitle" id="intro-sur-l-analyse-linguistique-prolog-linguistique-anglais-controle-etc">1. Intro sur l'analyse linguistique (prolog, linguistique), anglais controlé, etc...</h2>
 
-<div class="system-message">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">Attempto.linuxmag</tt>, line 5)</p>
-<p>Title underline too short.</p>
-<pre class="literal-block">
-1. Intro sur l'analyse linguistique (prolog, linguistique), anglais controlé, etc...
-----------------------------
-</pre>
-</div>
+<div class="section" id="intro-sur-l-analyse-linguistique-prolog-linguistique-anglais-controle-etc">
+<h1>1. Intro sur l'analyse linguistique (prolog, linguistique), anglais controlé, etc...</h1>
 <div class="section" id="enfance-de-l-art">
-<h1>Enfance de l'art</h1>
+<h2>Enfance de l'art</h2>
 <p>Depuis la naissance de l'ordinateur à la fin des années 1940, nombre d'ingénieurs et chercheurs rêvent d'apprendre à celle-ci de comprendre notre langage humain.
 Passé l'optimisme des premières années, les travaux ont trouvés une première réussite au début des années 1970, avec entre autre la naissance de Prolog.
 <a class="reference external" href="http://prolog.developpez.com/tutoriels/alain-colmerauer/histoire-prolog/">http://prolog.developpez.com/tutoriels/alain-colmerauer/histoire-prolog/</a></p>
@@ -344,12 +337,147 @@ Le Minou tue les souris.</dd>
 </dl>
 <p>Les bases de raisonnement logique sont là, mais c'est encore spartiate…</p>
 <p>Prolog étant devenu le langage C de l'IA, il va vite être à la base de nombreux traveaux d'analyse linguistique, d'abord formel, puis assez vite statistique grâce à la puissance informatique disponible dès les années 1980.</p>
-<p>L'analyse linguistique formelle consiste à définir un corpus grammatical et un vocabulaire ainsi qu'un ensemble de règles permettant au programme d'analyser le code.</p>
-<ol class="arabic simple" start="2">
-<li>Expliquer ce qu'est Attempto : LGPL, un anglais contrôlé, avec partie pris de n'analyser que la syntaxe</li>
-<li>L'anglais d'attempto</li>
+<p>[L'une des principales difficulté du traitement du langage humain est l'analyse des ambiguité ....]</p>
+<p>Dans cette article, nous allons présenter un anglais contrôlé Attempto Controlled English et son parseur, et nous allons montrer comment l'utiliser pour générer du code source à partir d'une description en anglais d'une interface utilisateur.</p>
+</div>
+<div class="section" id="approches-d-analyse">
+<h2>Approches d'analyse</h2>
+<p>L'analyse linguistique formelle consiste à définir un corpus grammatical et un vocabulaire ainsi qu'un ensemble de règles permettant au programme d'analyser le code. Cette approche nécessite un long et fastidieux travail de formalisation, et n'a aucune résistance aux fautes d'orthographes, aux tournures de phrases peu courantes, etc...
+Malgré ce gros défaut, l'analyse formelle permet de contrôler plus rigoureusement le sens de ce qui est analysé, c'est donc un choix privilégié lorsque l'on souhaite faire de l'analyse logique de la langue</p>
+<p>En réaction, l'approche statistique consiste à utliser des algorithmes d'apprentissage - Machine Learning en anglais - pour réaliser de l'analyse ou de la traduction. C'est l'approche utilisé pa rla plupart des logiciels de traduction automatiques, dont celui de Google (c'est la raison pour laquelle il vous propose de l'aider gratuitement à améliorer son moteur en amémiorant sa traduction).
+Cette approche est plus souple, car il suffit de &quot;l'entrainer&quot; avec un certain nombre de texte traduit par l'homme pour lui apprendre à se débrouiller seule.
+De par son approche flou, elle est surtout utilisé pour de la traduction automatique, de l'analyse de sens ou tout autre approche souffrant d'une certaine marge d'erreur dans l'exactitude.</p>
+</div>
+<div class="section" id="les-langues-controlees">
+<h2>Les langues controlées</h2>
+<p>L'analyse linguistique est un sujet maintenant bien assimilé par la communauté des chercheurs en traitement automatique de la langue (TAL), à tel point qu'elle est souvent enseignée dès le Master I aux étudiants.
+L'analyse formelle a survécu en se spécialisant dans les langues contrôlées : plutôt que de tenter de formaliser <em>toutes</em> les possibilités d'un langage, on en défini un sous ensemble, assez vaste pour être utilisable, mais assez restreinte pour ne pas devenir impossible à analyser.</p>
+<p>Parmi tous les langues controllées, nous en avons choisi une - Attempto Controlled English - qui a plusieurs particularités intéressantes, mais dont la première est de proposer un parseur libre (LGPL).</p>
+</div>
+</div>
+<div class="section" id="expliquer-ce-qu-est-attempto-lgpl-un-anglais-controle-avec-partie-pris-de-n-analyser-que-la-syntaxe">
+<h1>2. Expliquer ce qu'est Attempto : LGPL, un anglais contrôlé, avec partie pris de n'analyser que la syntaxe</h1>
+<p>Attempto Controlled English [2] (ACE) est un projet créé par Norbert E. Fuchs à l'Université de Zurich en 1995.
+L'objectif d'ACE est de proposer un anglais contrôlé <em>non ambigüe</em> qui soit en même temps un langage permettant d'exprimer directement de la logique du premier ordre. Attempto est en fait un langage logique du premier ordre… en anglais.
+La grammaire d'ACE, bien qu'assez vaste, est très strictement définie. Bien évidemment, aucune faute d'orthographe n'est permise. Toute ambiguité potentiel est soit éliminé de la grammaire, soit fait l'objet d'un parti pris défini clairement. Toute phrase aura une et une seule interprétation possible.</p>
+<p>ACE ne travaille que sur la syntaxe : seule la nature grammatical des mots et la structure grammaticale de la phrase sert à l'analyse. On évite ainsi l'utilisation d'une ontologie qui peut être sujet à caution.
+Le vocabulaire d'ACE est définissable et extensible à l'infini : il suffit d'indiquer dans le lexique si le mot est un nom commun (et en passant d'indiquer son pluriel), un adjectif, etc...</p>
+<p>Le parseur d'Attempto, Attempto Parser Engine (APE) est un outil écrit en prolog (dans le dialecte de Swi-prolog, un prolog libre disponible sur toutes les distributions connues), utilisable en ligne de commande, voire en tant que webservice.
+APE peut renvoyer l'analyse qu'il effectue du texte qui lui est donné dans différents formats - dont le format Semantic Web Rule Language  (SWRL), défini par le W3C [3])
+Dans la suite de l'article, nous utiliserons néanmoins le format &quot;Discourse Representation Structure&quot;, étendue par l'équipe du Pr Fuchs pour les besoins du logiciel, et qui s'avère plus puissante et étendue que le SWRL.</p>
+<p>Cette structure de donnée DRS est un arbre avec une grammaire clairement définie et facile à utiliser. DRS est un format puissant permettant d'exprimer de la logique du premier ordre classique et de la logique modale (déontique et aléthique) de par les opérateurs CAN et MUST.
+On verra par la suite un analyseur de DRS écrit en OCaml, permettant d'analyser ce DRS et d'en faire à peu près ce que l'on veut.</p>
+</div>
+<div class="section" id="premier-contact-attempto">
+<h1>3. Premier contact Attempto</h1>
+<p>Attempto nécessite l'installation de Swi-Prolog.</p>
+<p>Sur une Debian, on l'installera facilement celui-ci :</p>
+<blockquote>
+apt-get install swi-prolog</blockquote>
+<p>Après avoir téléchargé APE sur le site [1], l'installation non conventionelle se fait au moyen d'un ./make_exe.sh dans son répertoire.</p>
+<p>Analysons une première phrase, qui s'avère être une règle :</p>
+<pre class="literal-block">
+$ ./ape.exe  -cparaphrase   -cdrs -guess -text 'If the last character of S is not &quot;/&quot; then Prog appends &quot;/&quot; to S.'
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+ &lt;apeResult&gt;
+   &lt;duration tokenizer=&quot;0.028&quot; parser=&quot;0.007&quot; refres=&quot;0.001&quot;/&gt;
+   &lt;drs&gt;drs([],[=&amp;gt;(drs([A,B],[relation(A,of,B)-1/5,property(A,last,pos)-1/3,object(A,character,countable,na,eq,1)-1/4,-(drs([C],[predicate(C,be,A,string(/))-1/7])),object(B,something,dom,na,na,na)-1/6]),drs([D],[predicate(D,append,named('Prog'),string(/))-1/12,modifier_pp(D,to,B)-1/14]))])&lt;/drs&gt;
+
+   &lt;paraphrase&gt;If there is a last character X1 of something X2 and it is false that the last character X1 is &quot;/&quot; then Prog appends &quot;/&quot; to X2.&lt;/paraphrase&gt;
+   &lt;messages&gt;
+    &lt;message
+       importance=&quot;warning&quot;
+       type=&quot;word&quot;
+       sentence=&quot;1&quot;
+       token=&quot;11&quot;
+       value=&quot;Prog&quot;
+       repair=&quot;Undefined word. Interpreted as a singular proper name.&quot;/&gt;
+       &lt;message
+       importance=&quot;warning&quot; type=&quot;anaphor&quot; sentence=&quot;1&quot; token=&quot;4&quot;
+       value=&quot;The definite noun phrase 'the character' does not have an antecedent and thus is not interpreted as anaphoric reference, but as a new indefinite noun phrase.&quot;
+       repair=&quot;If the definite noun phrase 'the character' should be an anaphoric reference then you must introduce an appropriate antecedent.&quot;/&gt;
+   &lt;/messages&gt;
+ &lt;/apeResult&gt;
+</pre>
+<p>Ape génère une petite structure XML sur la sortie standard contenant des informations temporelles, le DRS produit, et une phrase reconstruite à partir du DRS produit.
+Dans un langage un peu plus verbeux, on constate que cela veut dire la même chose que la phrase d'origine.</p>
+<dl class="docutils">
+<dt>Avant d'analyser l'anglais d'ACE et le DRS, voici quelques options intéressantes d'APE :</dt>
+<dd><ul class="first last simple">
+<li>cparaphrase : propose une paraphrase du texte entré reconstruite par APE à partir du DRS qu'il produit. cela permet de contrôler qu'on est d'accord avec APE sur le sens de notre phrase</li>
+<li>cdrs sort une structure d'analyse en format DRS</li>
+<li>guess permet de deviner la nature grammatical d'un mot inconnu dans le lexique</li>
+<li>httpserver permet de transformer APE en serveur web sur le port 8000, l'option -port permet de défiir son port</li>
+</ul>
+</dd>
+</dl>
+</div>
+<div class="section" id="l-anglais-d-attempto">
+<h1>4. L'anglais d'Attempto</h1>
+<p>Dans ACE, tout verbe s'écrit à la troisième personne du singulier au présent et à la voix active. On peut dans certains cas utiliser la voix passive, mais on tombe vite sur les frontières du langage.
+Dans toutes les langues du monde, les verbes sont intransitif (pleuvoir), transitifs (manger), bitransitifs (donner).
+Dans le premier cas, on a qu'un sujet un verbe, dans le second, un sujet un verbe un complément, et dans le troisième un deuxième complément (Donner quelques chose à quelqu'un).</p>
+<dl class="docutils">
+<dt>Phrases simple :</dt>
+<dd><ul class="first last simple">
+<li><em>Jean loves Mary.</em> drs([A],[predicate(A,love,named('Jean'),named('Mary'))-1/2])</li>
+<li><em>Jean gives a flower to Mary.</em> drs([A,B],[object(A,flower,countable,na,eq,1)-1/4,predicate(B,give,named('Jean'),A,named('Mary'))-1/2])*</li>
+</ul>
+</dd>
+<dt>Phrases avec adjectifs :</dt>
+<dd><ul class="first last simple">
+<li><em>Jean gives a beautiful blue flower to Mary.</em> drs([A,B],[object(A,flower,countable,na,eq,1)-1/5,property(A,blue,pos)-1/4,predicate(B,give,named('Jean'),A,named('Mary'))-1/2])</li>
+</ul>
+</dd>
+</dl>
+<p>Attempto refuse un deuxième adjectif : <em>Jean gives a beautiful blue flower to Mary.</em> provoque une erreur</p>
+<dl class="docutils">
+<dt>Phrases un peu plus complexe :</dt>
+<dd><ul class="first last simple">
+<li><em>A country which has a river which has 2 forests borders a country of John.</em></li>
+</ul>
+</dd>
+<dt>Règles :</dt>
+<dd><em>Every flower Jean gives to Mary makes mary loving Jean.</em>
+<em>Every flower that Jean gives to Mary implies that Mary is happy.</em>
+<em>Every flower that Jean gives to Mary can imply that Mary is happy.</em> On exprime ici une modalité</dd>
+</dl>
+<p>Je vous invite à lire le manuel d'Attempto pour comprendre la syntaxe autorisée.
+Si néanmoins cela vous fatigue et que vous souhaitiez tenter l'essai erreur, un conseil : surabusez des <em>that</em> et des <em>which</em> dans vos phrases !</p>
+</div>
+<div class="section" id="le-discourse-representation-structure">
+<h1>5. Le Discourse Representation Structure</h1>
+<p>Le DRS est un format défini par une grammaire stricte, évidemment récursive, permettant d'exprimer sans ambiguité une définition ou règle logique de manière non ambigue.</p>
+<p>Avant d'étudier sa structure, nous allons expliciter les primitives importantes :</p>
+<ul>
+<li><dl class="first docutils">
+<dt>predicate  définit un verbe, intransitif, transitif, ou bitransitif.</dt>
+<dd><p class="first last">Son premier paramètre est la variable le définissant, le second paramètre est le verbe à l'infinitif, le troisième est le sujet de ce verbe, le quatrième - dans le cas d'un verbe transitif et bitransitif - le complément, et le deuxième complément du verbe bitransitif s'il y a lieu.
+Ainsi <em>predicate(A,love,named('Jean'),named('Mary'))</em> se lit <em>Jean loves Mary</em></p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Object <span class="classifier-delimiter">:</span> <span class="classifier">définit généralement un nom, commun ou propre. Le 1er paramètre est la variable le définissant, le 2nd le nom en lui même, le 3ème un terme définissant s'il est dénombrable ou non, un 4ème s'il a une unité de mesure, le 5ème s'il est égal, supérieur, inférieur, etc.. au 6ème paramètre.</span></dt>
+<dd><p class="first last"><em>object(A,flower,countable,na,eq,1)</em> Définit une variable A comme étant une fleur, qui est un objet dénombrable, sans unité de mesure (na), d'exactement un élément</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Property <span class="classifier-delimiter">:</span> <span class="classifier">définit qu'un objet représenté par la variable A a pour adjectif blue.property(A,blue,pos).</span></dt>
+<dd><p class="first last">pos signifie que l'on applique simplement l'adjectif au nom. Si l'on avait écrit <em>Jean gives a bluer flower to Mary.</em>,  on aurait property(A,blue,comp) qui indique une comparaison.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">Attempto.linuxmag</tt>, line 174)</p>
+Bullet list ends without a blank line; unexpected unindent.</div>
+<ol class="arabic simple" start="4">
 <li>Objectif, utiliser attempto pour ses besoins personnels</li>
 </ol>
+<p>[2] <a class="reference external" href="http://attempto.ifi.uzh.ch/site/">http://attempto.ifi.uzh.ch/site/</a>
+[3] <a class="reference external" href="http://www.w3.org/Submission/SWRL/">http://www.w3.org/Submission/SWRL/</a></p>
 </div>
 </div>
 </body>

@@ -25,6 +25,16 @@ Les bases de raisonnement logique sont là, mais c'est encore spartiate…
 
 Prolog étant devenu le langage C de l'IA, il va vite être à la base de nombreux traveaux d'analyse linguistique, d'abord formel, puis assez vite statistique grâce à la puissance informatique disponible dès les années 1980.
 
+[L'une des principales difficulté du traitement du langage humain est l'analyse des ambiguité ....]
+
+
+
+Dans cette article, nous allons présenter un anglais contrôlé Attempto Controlled English et son parseur, et nous allons montrer comment l'utiliser pour générer du code source à partir d'une description en anglais d'une interface utilisateur.
+
+
+
+
+
 Approches d'analyse
 +++++++++++++++++++
 
@@ -39,8 +49,131 @@ Les langues controlées
 ++++++++++++++++++++++
 
 L'analyse linguistique est un sujet maintenant bien assimilé par la communauté des chercheurs en traitement automatique de la langue (TAL), à tel point qu'elle est souvent enseignée dès le Master I aux étudiants.
-Les partisans de
+L'analyse formelle a survécu en se spécialisant dans les langues contrôlées : plutôt que de tenter de formaliser *toutes* les possibilités d'un langage, on en défini un sous ensemble, assez vaste pour être utilisable, mais assez restreinte pour ne pas devenir impossible à analyser.
+
+Parmi tous les langues controllées, nous en avons choisi une - Attempto Controlled English - qui a plusieurs particularités intéressantes, mais dont la première est de proposer un parseur libre (LGPL).
 
 2. Expliquer ce qu'est Attempto : LGPL, un anglais contrôlé, avec partie pris de n'analyser que la syntaxe
-3. L'anglais d'attempto
+---------------------------------------------------------------------------------------------------------- 
+
+Attempto Controlled English [2] (ACE) est un projet créé par Norbert E. Fuchs à l'Université de Zurich en 1995. 
+L'objectif d'ACE est de proposer un anglais contrôlé *non ambigüe* qui soit en même temps un langage permettant d'exprimer directement de la logique du premier ordre. Attempto est en fait un langage logique du premier ordre… en anglais.
+La grammaire d'ACE, bien qu'assez vaste, est très strictement définie. Bien évidemment, aucune faute d'orthographe n'est permise. Toute ambiguité potentiel est soit éliminé de la grammaire, soit fait l'objet d'un parti pris défini clairement. Toute phrase aura une et une seule interprétation possible.
+
+ACE ne travaille que sur la syntaxe : seule la nature grammatical des mots et la structure grammaticale de la phrase sert à l'analyse. On évite ainsi l'utilisation d'une ontologie qui peut être sujet à caution.
+Le vocabulaire d'ACE est définissable et extensible à l'infini : il suffit d'indiquer dans le lexique si le mot est un nom commun (et en passant d'indiquer son pluriel), un adjectif, etc...
+
+Le parseur d'Attempto, Attempto Parser Engine (APE) est un outil écrit en prolog (dans le dialecte de Swi-prolog, un prolog libre disponible sur toutes les distributions connues), utilisable en ligne de commande, voire en tant que webservice.
+APE peut renvoyer l'analyse qu'il effectue du texte qui lui est donné dans différents formats - dont le format Semantic Web Rule Language  (SWRL), défini par le W3C [3])
+Dans la suite de l'article, nous utiliserons néanmoins le format "Discourse Representation Structure", étendue par l'équipe du Pr Fuchs pour les besoins du logiciel, et qui s'avère plus puissante et étendue que le SWRL.
+
+Cette structure de donnée DRS est un arbre avec une grammaire clairement définie et facile à utiliser. DRS est un format puissant permettant d'exprimer de la logique du premier ordre classique et de la logique modale (déontique et aléthique) de par les opérateurs CAN et MUST.
+On verra par la suite un analyseur de DRS écrit en OCaml, permettant d'analyser ce DRS et d'en faire à peu près ce que l'on veut.
+
+
+3. Premier contact Attempto
+---------------------------
+
+Attempto nécessite l'installation de Swi-Prolog.
+
+Sur une Debian, on l'installera facilement celui-ci :
+
+ apt-get install swi-prolog
+
+
+Après avoir téléchargé APE sur le site [1], l'installation non conventionelle se fait au moyen d'un ./make_exe.sh dans son répertoire.
+
+Analysons une première phrase, qui s'avère être une règle :
+
+
+::
+
+ $ ./ape.exe  -cparaphrase   -cdrs -guess -text 'If the last character of S is not "/" then Prog appends "/" to S.'
+ <?xml version="1.0" encoding="UTF-8"?>
+  <apeResult>
+    <duration tokenizer="0.028" parser="0.007" refres="0.001"/>
+    <drs>drs([],[=&gt;(drs([A,B],[relation(A,of,B)-1/5,property(A,last,pos)-1/3,object(A,character,countable,na,eq,1)-1/4,-(drs([C],[predicate(C,be,A,string(/))-1/7])),object(B,something,dom,na,na,na)-1/6]),drs([D],[predicate(D,append,named('Prog'),string(/))-1/12,modifier_pp(D,to,B)-1/14]))])</drs>
+
+    <paraphrase>If there is a last character X1 of something X2 and it is false that the last character X1 is "/" then Prog appends "/" to X2.</paraphrase>
+    <messages>
+     <message
+  	importance="warning"
+  	type="word"
+  	sentence="1"
+  	token="11"
+  	value="Prog"
+  	repair="Undefined word. Interpreted as a singular proper name."/>
+	<message
+  	importance="warning" type="anaphor" sentence="1" token="4"
+	value="The definite noun phrase 'the character' does not have an antecedent and thus is not interpreted as anaphoric reference, but as a new indefinite noun phrase."
+	repair="If the definite noun phrase 'the character' should be an anaphoric reference then you must introduce an appropriate antecedent."/>
+    </messages>
+  </apeResult>
+
+
+
+Ape génère une petite structure XML sur la sortie standard contenant des informations temporelles, le DRS produit, et une phrase reconstruite à partir du DRS produit.
+Dans un langage un peu plus verbeux, on constate que cela veut dire la même chose que la phrase d'origine.
+
+
+Avant d'analyser l'anglais d'ACE et le DRS, voici quelques options intéressantes d'APE :
+	- cparaphrase : propose une paraphrase du texte entré reconstruite par APE à partir du DRS qu'il produit. cela permet de contrôler qu'on est d'accord avec APE sur le sens de notre phrase
+	- cdrs sort une structure d'analyse en format DRS
+	- guess permet de deviner la nature grammatical d'un mot inconnu dans le lexique
+	- httpserver permet de transformer APE en serveur web sur le port 8000, l'option -port permet de défiir son port
+
+
+4. L'anglais d'Attempto
+-----------------------
+
+
+Dans ACE, tout verbe s'écrit à la troisième personne du singulier au présent et à la voix active. On peut dans certains cas utiliser la voix passive, mais on tombe vite sur les frontières du langage.
+Dans toutes les langues du monde, les verbes sont intransitif (pleuvoir), transitifs (manger), bitransitifs (donner). 
+Dans le premier cas, on a qu'un sujet un verbe, dans le second, un sujet un verbe un complément, et dans le troisième un deuxième complément (Donner quelques chose à quelqu'un).
+
+Phrases simple :
+	- *Jean loves Mary.* drs([A],[predicate(A,love,named('Jean'),named('Mary'))-1/2])
+	- *Jean gives a flower to Mary.* drs([A,B],[object(A,flower,countable,na,eq,1)-1/4,predicate(B,give,named('Jean'),A,named('Mary'))-1/2])*
+
+Phrases avec adjectifs :
+	- *Jean gives a beautiful blue flower to Mary.* drs([A,B],[object(A,flower,countable,na,eq,1)-1/5,property(A,blue,pos)-1/4,predicate(B,give,named('Jean'),A,named('Mary'))-1/2])
+
+Attempto refuse un deuxième adjectif : *Jean gives a beautiful blue flower to Mary.* provoque une erreur
+
+
+Phrases un peu plus complexe :
+	- *A country which has a river which has 2 forests borders a country of John.*
+
+
+Règles :
+	*Every flower Jean gives to Mary makes mary loving Jean.*
+	*Every flower that Jean gives to Mary implies that Mary is happy.*
+	*Every flower that Jean gives to Mary can imply that Mary is happy.* On exprime ici une modalité
+
+
+Je vous invite à lire le manuel d'Attempto pour comprendre la syntaxe autorisée. 
+Si néanmoins cela vous fatigue et que vous souhaitiez tenter l'essai erreur, un conseil : surabusez des *that* et des *which* dans vos phrases !
+
+
+5. Le Discourse Representation Structure
+----------------------------------------
+
+Le DRS est un format défini par une grammaire stricte, évidemment récursive, permettant d'exprimer sans ambiguité une définition ou règle logique de manière non ambigue.
+
+Avant d'étudier sa structure, nous allons expliciter les primitives importantes :
+
+- predicate  définit un verbe, intransitif, transitif, ou bitransitif. 
+	Son premier paramètre est la variable le définissant, le second paramètre est le verbe à l'infinitif, le troisième est le sujet de ce verbe, le quatrième - dans le cas d'un verbe transitif et bitransitif - le complément, et le deuxième complément du verbe bitransitif s'il y a lieu.
+	Ainsi *predicate(A,love,named('Jean'),named('Mary'))* se lit *Jean loves Mary*
+
+- Object   : définit généralement un nom, commun ou propre. Le 1er paramètre est la variable le définissant, le 2nd le nom en lui même, le 3ème un terme définissant s'il est dénombrable ou non, un 4ème s'il a une unité de mesure, le 5ème s'il est égal, supérieur, inférieur, etc.. au 6ème paramètre.
+		*object(A,flower,countable,na,eq,1)* Définit une variable A comme étant une fleur, qui est un objet dénombrable, sans unité de mesure (na), d'exactement un élément
+
+- Property : définit qu'un objet représenté par la variable A a pour adjectif blue.property(A,blue,pos). 
+		 pos signifie que l'on applique simplement l'adjectif au nom. Si l'on avait écrit *Jean gives a bluer flower to Mary.*,  on aurait property(A,blue,comp) qui indique une comparaison.
 4. Objectif, utiliser attempto pour ses besoins personnels
+
+
+
+[2] http://attempto.ifi.uzh.ch/site/
+[3] http://www.w3.org/Submission/SWRL/
