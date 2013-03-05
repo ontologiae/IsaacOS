@@ -1,0 +1,46 @@
+Attempto Controlled English
+===========================
+
+1. Intro sur l'analyse linguistique (prolog, linguistique), anglais controlé, etc...
+------------------------------------------------------------------------------------
+
+Enfance de l'art
+++++++++++++++++
+
+Depuis la naissance de l'ordinateur à la fin des années 1940, nombre d'ingénieurs et chercheurs rêvent d'apprendre à celle-ci de comprendre notre langage humain.
+Passé l'optimisme des premières années, les travaux ont trouvés une première réussite au début des années 1970, avec entre autre la naissance de Prolog.
+http://prolog.developpez.com/tutoriels/alain-colmerauer/histoire-prolog/
+
+En 1970, on arrivait, grâce à Prolog, à dialoguer de la manière suivante avec la machine :
+ *Utilisateur*
+ Les chats tuent les souris.
+ Minou est un chat qui n'aime pas les souris qui mangent du fromage. Miquette est une souris qui mangent du fromage.
+ Max n'est pas une souris.
+ Que fait Minou?
+ *Machine*
+ Le Minou ne aime pas les souris qui mangent le fromage.
+ Le Minou tue les souris.
+
+Les bases de raisonnement logique sont là, mais c'est encore spartiate…
+
+Prolog étant devenu le langage C de l'IA, il va vite être à la base de nombreux traveaux d'analyse linguistique, d'abord formel, puis assez vite statistique grâce à la puissance informatique disponible dès les années 1980.
+
+Approches d'analyse
++++++++++++++++++++
+
+L'analyse linguistique formelle consiste à définir un corpus grammatical et un vocabulaire ainsi qu'un ensemble de règles permettant au programme d'analyser le code. Cette approche nécessite un long et fastidieux travail de formalisation, et n'a aucune résistance aux fautes d'orthographes, aux tournures de phrases peu courantes, etc...
+Malgré ce gros défaut, l'analyse formelle permet de contrôler plus rigoureusement le sens de ce qui est analysé, c'est donc un choix privilégié lorsque l'on souhaite faire de l'analyse logique de la langue
+
+En réaction, l'approche statistique consiste à utliser des algorithmes d'apprentissage - Machine Learning en anglais - pour réaliser de l'analyse ou de la traduction. C'est l'approche utilisé pa rla plupart des logiciels de traduction automatiques, dont celui de Google (c'est la raison pour laquelle il vous propose de l'aider gratuitement à améliorer son moteur en amémiorant sa traduction).
+Cette approche est plus souple, car il suffit de "l'entrainer" avec un certain nombre de texte traduit par l'homme pour lui apprendre à se débrouiller seule.
+De par son approche flou, elle est surtout utilisé pour de la traduction automatique, de l'analyse de sens ou tout autre approche souffrant d'une certaine marge d'erreur dans l'exactitude.
+
+Les langues controlées
+++++++++++++++++++++++
+
+L'analyse linguistique est un sujet maintenant bien assimilé par la communauté des chercheurs en traitement automatique de la langue (TAL), à tel point qu'elle est souvent enseignée dès le Master I aux étudiants.
+Les partisans de
+
+2. Expliquer ce qu'est Attempto : LGPL, un anglais contrôlé, avec partie pris de n'analyser que la syntaxe
+3. L'anglais d'attempto
+4. Objectif, utiliser attempto pour ses besoins personnels

@@ -1,0 +1,95 @@
+Pourquoi les développeurs n'utilisent pas plus de machines à état ?
+-------------------------------------------------------------------
+
+
+Les langages de programmations, de quelques paradigmes qu'ils soient (bien qu'un peu moins pour le paradigme logique), est basé sur le concept de liste
+d'instruction exécuté à la suite par la machine. La machine exécutant ce code est une machine à état, mais le programme n'est pas formellement pensé comme tel.
+
+Les machines à état semblent pourtant un bon outil pour la programmation des logiciels que nous avons l'habitude de développer : Facile à dessiner sur papier,
+permettant un découpage clair du fonctionnement de l'application. Sans compter qu'une machine à état se patch plus facilement qu'un code classique ou l'effet
+spagghetti peut vite impliquer des effets indésirables.
+Les designers de Qt l'ont bien compris en permettant de définir des machines à état pour décrire le comportement du controleur.
+
+C'est pourquoi certains se sont demandés si la programmation en machine à état ne devrait pas être plus pratiqué et aimée des programmeurs. C'est ce que se demande Willem
+van Bergen, carrément enthousiaste http://www.shopify.com/technology/3383012-why-developers-should-be-force-fed-state-machines .
+Celui-ci pense que c'est le stockage de l'historique qui est essentiel
+Plus circonspect, Alan Skorkin étudie la problématique de reprise de code, afin de comparer http://www.skorks.com/2011/09/why-developers-never-use-state-machines/
+http://news.ycombinator.com/item?id=2949543 pour conclure que si les machines à états ne sont pas la panacé, elles sont très intéressantes si on conçoit le code
+avec.
+
+Le point de vue du vieux singe (s/in/a/)
+----------------------------------------
+Un point de vue très intéressant d'un vieux programmeur nous racontant son expérience de HACMP en 1993. Il utilisait intensivement des machines à état pour
+gérer ses problèmes de protocoles gérant le cluster http://news.ycombinator.com/item?id=2950189
+Selon lui les machines à état son essentiellement boudées car mal codées à la base.
+Pour être facile à utiliser il leur faudrait (traduction non littérale) :
+
+- Une manière simple de gérer les contextes entre états, ce qui doit être fait le plus souvent à la main
+- Un historique, dans les stacktrace, en particulier qui permette de connaître les changement d'état
+- La manière de coder les FSM implique que l'on contourne la vérification de typage, il faut donc mieux utiliser de la génération de code qui permettra de générer
+  un code propre
+
+Il conclue que si d'avantage de bonnes machines à états étaient implémentées, avec une gestion de contexte, un historique, et une machinerie de test,
+d'avantages de programmeurs les utiliseraient.
+
+Machine à état fini hiérarchiques
+---------------------------------
+
+La définition d'une machine à état peut vite devenir lourde à mesure que se complexifie le comportement. C'est pourquoi, on est ammené à utiliser des machines à
+état hiérarchiques : chaque état peut comporter une machine à état (récursivement) qui s'active lorsqu'on passe dans l'état la contenant. Cela permet de définir
+des macro-comportement composés de micro-comportements.
+
+
+Dans une telle machine, à chaque cycle, on va d'abord tester qu'une transition n'est pas à effectuer dans un état père. En l'occurrence, on part du père de plus haut degré, pour tester les transitions
+possible. S'il n'y en a pas, on descend à son fils (dans la direction de l'état duquel on part à la base) et ainsi de suite jusqu'à tester la transition de l'état courant vers un autre état auquel il
+est lié.
+De même, si on effectue sur une transition sur l'un des père de cet état, on doit choisir son fils le plus "prodond".
+C'est un type de machine un peu plus difficile tant à écrire,qu'à vérifier la validité de son graphe, mais ce type de machine à état offre une facilité de conceptualisation : on retrouve l'effet
+"empilement de boite noires" qui a fait le succès du logiciel.
+
+Une solution ?
+--------------
+
+
+ Un agent (un objet, par exemple) dont le cycle de vie est géré par une machine à état. Chaque transition est une basé sur une équation booléenne
+de conditions et d'évènements :
+
+
+```ocaml
+type 'event transition = 
+  | Condition    of (unit -> bool) 
+  | Event        of 'event * (unit -> 'event list ) 
+  | EventOr      of 'event * (unit -> 'event list ) * 'event transition
+  | EventAnd     of 'event * (unit -> 'event list ) * 'event transition
+  | EventXor     of 'event * (unit -> 'event list ) * 'event transition
+  | EventNot     of 'event * (unit -> 'event list ) 
+  | ConditionOr  of (unit -> bool)   * 'event transition 
+  | ConditionAnd of (unit -> bool)   * 'event transition
+  | ConditionXor of (unit -> bool)   * 'event transition
+  | ConditionNot of (unit -> bool);;
+
+```
+L'agent possède un historique de ses transitions (et donc des évènements extérieurs)
+
+Ainsi, les données reste dans l'objet, ce qui résout les problèmes de contexte. En effet les état/transitions s'appliquant sur un objet, tout ce qui est relatif
+au contexte reste au même endroit et non coincé dans chaque état.
+
+Gestion d'historique
+++++++++++++++++++++
+
+La gestion d'historique peut sembler gadget, mais il peut devenir utile lorsqu'il va servir d'élément pour décider une transition. On acquiert ainsi une proto sémantique logique temporelle à peu de
+frais.
+
+
+Conclusion
+----------
+
+Les machines à état sont certainement discredités du fait de leur présentation trop théorique qui est assénée aux étudiants lors de leur études. C'est néanmoins un outil puissant qui nécessite
+
+
+
+http://www.shopify.com/technology/3383012-why-developers-should-be-force-fed-state-machines 
+http://www.skorks.com/2011/09/why-developers-never-use-state-machines/
+http://chsm.sourceforge.net/chsm-slides.pdf
+http://www.complang.org/ragel/
+https://github.com/creynders/jsfsa
