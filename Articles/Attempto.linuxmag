@@ -171,9 +171,69 @@ Avant d'étudier sa structure, nous allons expliciter les primitives importantes
 
 - Property : définit qu'un objet représenté par la variable A a pour adjectif blue.property(A,blue,pos). 
 		 pos signifie que l'on applique simplement l'adjectif au nom. Si l'on avait écrit *Jean gives a bluer flower to Mary.*,  on aurait property(A,blue,comp) qui indique une comparaison.
-4. Objectif, utiliser attempto pour ses besoins personnels
+
+
+
+6. DRS Analysis Tool
+--------------------
+
+DRS Analysis Tool est une petite librairie en OCaml, disponible sur github [4], permettant de parser la structure de données DRS renvoyée par APE.
+Dans le fichier syntaxe.ml, on y trouve une définition de la grammaire du DRS dans un type OCaml :
+
+::
+type fulldrs = FullDRS of domain * conditions
+and conditions = atom list
+and domain = var list
+and var = Var of string | SubAtom of atom | Num of int | ConstStr of name
+
+and adjectif = Adj of name
+and adverbe = Adv of name
+and preposition = Preposition of name
+and verbe = Verbe of name
+and noun = Nom of name
+
+and pronom_interrogatif = Who | What | Which | How | Where | When
+and classtype = Dom | Mass | Countable
+and unittype = Kg | Na | Meter
+and op = Eq | Geq | Greater | Leq | Less | Exactly | NaOp 
+and degre = Pos | Pos_as | Comp | Comp_than | Sup
+and compTarget = Subj | Obj
+and countable = NotCountable | Number of int
+and grammaticalNumber = Plural | Singular | Partitive
+
+and atom = 
+  Operator2 of operator * fulldrs * fulldrs 
+| Operator1 of operator * fulldrs  
+| PredicateIntransitive of var * verbe * var * grammaticalNumber
+| PredicateTransitive of var * verbe * var * var * grammaticalNumber
+| PredicateDiTransitive of var * verbe * var * var * var * grammaticalNumber
+
+| Object of var * noun * classtype * unittype * op * countable (*Ref,Noun,Class,Unit,Op,Count*) * int * int 
+
+
+| Property1Ary of var * adjectif * degre 
+| Property2Ary of var * adjectif * degre * var
+| Property3Ary of var * adjectif * var * degre * compTarget * var
+
+
+| Relation of var * var
+| Modifier_Adv of var * adverbe * degre 
+| Modifier_pp of var * preposition * var
+
+| HasPart of var * var
+| PartOf of var * var 
+| Named of  name (**)
+| String of  name
+
+| Query of var * pronom_interrogatif
+| Rien ;;
+
+
 
 
 
 [2] http://attempto.ifi.uzh.ch/site/
+
 [3] http://www.w3.org/Submission/SWRL/
+
+[4] https://github.com/ontologiae/DRS-Analysis-Tool
