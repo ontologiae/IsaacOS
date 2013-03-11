@@ -322,8 +322,7 @@ ul.auto-toc {
 <div class="section" id="enfance-de-l-art">
 <h2>Enfance de l'art</h2>
 <p>Depuis la naissance de l'ordinateur à la fin des années 1940, nombre d'ingénieurs et chercheurs rêvent d'apprendre à celle-ci de comprendre notre langage humain.
-Passé l'optimisme des premières années, les travaux ont trouvés une première réussite au début des années 1970, avec entre autre la naissance de Prolog.
-<a class="reference external" href="http://prolog.developpez.com/tutoriels/alain-colmerauer/histoire-prolog/">http://prolog.developpez.com/tutoriels/alain-colmerauer/histoire-prolog/</a></p>
+Passé l'optimisme des premières années, les travaux ont trouvés une première réussite au début des années 1970, avec entre autre la naissance de Prolog.[1]</p>
 <dl class="docutils">
 <dt>En 1970, on arrivait, grâce à Prolog, à dialoguer de la manière suivante avec la machine :</dt>
 <dd><em>Utilisateur</em>
@@ -382,22 +381,19 @@ $ ./ape.exe  -cparaphrase   -cdrs -guess -text 'If the last character of S is no
  &lt;apeResult&gt;
    &lt;duration tokenizer=&quot;0.028&quot; parser=&quot;0.007&quot; refres=&quot;0.001&quot;/&gt;
    &lt;drs&gt;drs([],[=&amp;gt;(drs([A,B],[relation(A,of,B)-1/5,property(A,last,pos)-1/3,object(A,character,countable,na,eq,1)-1/4,-(drs([C],[predicate(C,be,A,string(/))-1/7])),object(B,something,dom,na,na,na)-1/6]),drs([D],[predicate(D,append,named('Prog'),string(/))-1/12,modifier_pp(D,to,B)-1/14]))])&lt;/drs&gt;
-
    &lt;paraphrase&gt;If there is a last character X1 of something X2 and it is false that the last character X1 is &quot;/&quot; then Prog appends &quot;/&quot; to X2.&lt;/paraphrase&gt;
    &lt;messages&gt;
     &lt;message
-       importance=&quot;warning&quot;
-       type=&quot;word&quot;
-       sentence=&quot;1&quot;
-       token=&quot;11&quot;
-       value=&quot;Prog&quot;
-       repair=&quot;Undefined word. Interpreted as a singular proper name.&quot;/&gt;
-       &lt;message
-       importance=&quot;warning&quot; type=&quot;anaphor&quot; sentence=&quot;1&quot; token=&quot;4&quot;
-       value=&quot;The definite noun phrase 'the character' does not have an antecedent and thus is not interpreted as anaphoric reference, but as a new indefinite noun phrase.&quot;
-       repair=&quot;If the definite noun phrase 'the character' should be an anaphoric reference then you must introduce an appropriate antecedent.&quot;/&gt;
-   &lt;/messages&gt;
- &lt;/apeResult&gt;
+              importance=&quot;warning&quot;
+              type=&quot;word&quot;
+              sentence=&quot;1&quot;
+              token=&quot;11&quot;
+              value=&quot;Prog&quot;
+              repair=&quot;Undefined word. Interpreted as a singular proper name.&quot;/&gt;
+    &lt;message
+      importance=&quot;warning&quot; type=&quot;anaphor&quot; sentence=&quot;1&quot; token=&quot;4&quot; value=&quot;The definite noun phrase 'the character' does not have an antecedent and thus is not interpreted as anaphoric reference, but as a new indefinite noun phrase.&quot; repair=&quot;If the definite noun phrase 'the character' should be an anaphoric reference then you must introduce an appropriate antecedent.&quot;/&gt;
+  &lt;/messages&gt;
+&lt;/apeResult&gt;
 </pre>
 <p>Ape génère une petite structure XML sur la sortie standard contenant des informations temporelles, le DRS produit, et une phrase reconstruite à partir du DRS produit.
 Dans un langage un peu plus verbeux, on constate que cela veut dire la même chose que la phrase d'origine.</p>
@@ -470,14 +466,136 @@ Ainsi <em>predicate(A,love,named('Jean'),named('Mary'))</em> se lit <em>Jean lov
 </dl>
 </li>
 </ul>
-<div class="system-message">
-<p class="system-message-title">System Message: WARNING/2 (<tt class="docutils">Attempto.linuxmag</tt>, line 174)</p>
-Bullet list ends without a blank line; unexpected unindent.</div>
-<ol class="arabic simple" start="4">
-<li>Objectif, utiliser attempto pour ses besoins personnels</li>
-</ol>
-<p>[2] <a class="reference external" href="http://attempto.ifi.uzh.ch/site/">http://attempto.ifi.uzh.ch/site/</a>
-[3] <a class="reference external" href="http://www.w3.org/Submission/SWRL/">http://www.w3.org/Submission/SWRL/</a></p>
+<p>Chaque DRS peut contenir un ou plusieurs DRS avec des opérateurs, ou une liste de primitives précédemment définies. On verra dans la section suivante, la grammaire complète des DRS.</p>
+<p>La plupart des phrases sont structurés sous la forme sujet + verbe [+ complément d'objet direct] [+ complément d'objet indirect], à l'aide des primitives object et predicate. Ces structures simple nous suffiront pour le moment.</p>
+</div>
+<div class="section" id="drs-analysis-tool">
+<h1>6. DRS Analysis Tool</h1>
+<p>DRS Analysis Tool est une petite librairie en OCaml, disponible sur github [4], permettant de parser la structure de données DRS renvoyée par APE.
+Dans le fichier syntaxe.ml, on y trouve une définition de la grammaire du DRS dans un type OCaml :</p>
+<pre class="literal-block">
+(* Un DRS est contitué d'un domaine - une liste de variables - et du corps du DRS proprement dit*)
+type fulldrs = FullDRS of domain * conditions
+(* Une condition est une liste d'atome*)
+and conditions = atom list
+and domain = var list
+(* Une variable peut être une variable seule, un sous atome, un nombre ou une chaine*)
+and var = Var of string | SubAtom of atom | Num of int | ConstStr of name
+(* on définit ici toutes les primitives de base*)
+and adjectif = Adj of name
+and adverbe = Adv of name
+and preposition = Preposition of name
+and verbe = Verbe of name
+and noun = Nom of name
+
+and pronom_interrogatif = Who | What | Which | How | Where | When
+and classtype = Dom | Mass | Countable
+and unittype = Kg | Na | Meter
+and op = Eq | Geq | Greater | Leq | Less | Exactly | NaOp
+and degre = Pos | Pos_as | Comp | Comp_than | Sup
+and compTarget = Subj | Obj
+and countable = NotCountable | Number of int
+and grammaticalNumber = Plural | Singular | Partitive
+(* Le coeur de la grammaire *)
+and atom =
+  Operator2 of operator * fulldrs * fulldrs
+| Operator1 of operator * fulldrs
+| PredicateIntransitive of var * verbe * var * grammaticalNumber
+| PredicateTransitive of var * verbe * var * var * grammaticalNumber
+| PredicateDiTransitive of var * verbe * var * var * var * grammaticalNumber
+
+| Object of var * noun * classtype * unittype * op * countable (*Ref,Noun,Class,Unit,Op,Count*) * int * int
+
+
+| Property1Ary of var * adjectif * degre
+| Property2Ary of var * adjectif * degre * var
+| Property3Ary of var * adjectif * var * degre * compTarget * var
+
+
+| Relation of var * var
+| Modifier_Adv of var * adverbe * degre
+| Modifier_pp of var * preposition * var
+
+| HasPart of var * var
+| PartOf of var * var
+| Named of  name (**)
+| String of  name
+
+| Query of var * pronom_interrogatif
+| Rien ;;
+</pre>
+</div>
+<div class="section" id="generer-du-code-a-partir-d-une-phrase">
+<h1>7. Générer du code à partir d'une phrase</h1>
+<p>Une fois le DRS parsé, nous allons pouvoir inférer ce que l'on désir à partir de l'arbre syntaxique obtenu.
+Pour ce faire, nous allons user et abuser d'une fonctionnalité majeure d'OCaml (et de ses cousins Scala et Haskell) : le pattern matching.
+Le pattern matching est une sorte de switch case dopé aux stéroïdes. Si vous êtes habitués aux Enums de Java, disons que c'est la possibilité de donner des paramètres à enum et de se définir récursivement.</p>
+<p>Un expression mathématique du genre (5 + 9) - 5 peut s'écrire très facilement avec un type somme :
+type expre =
+| Plus of expre * expre
+| Moins of expre * expre
+| Nbr of int</p>
+<p>Ainsi (5 + 9) - 5 s'écrit Moins( Plus(Nbr 5, Nbr 9), Nbr 5), ce que l'on appelle une notation polonaise inversée.
+Une calculatrice s'écrit alors très simplement grace au pattern matching</p>
+<p>let rec calc expression =
+match expression with
+| Plus (a,b) -&gt; calc a + calc b
+| Moins(a,b) -&gt; calc a - calc b
+| Nbr   a    -&gt; a
+Caml nous répond en typant cette fonction : val calc : expre -&gt; int = &lt;fun&gt;</p>
+<p>Une des grandes forces d'Ocaml (et d'Haskell) est sa capacité à vous gronder s'il manque un cas.
+Ainsi, si l'on oubliait le cas  &quot;plus&quot; :
+let rec calc expression =
+match expression with
+| Moins(a,b) -&gt; calc a - calc b
+| Nbr   a    -&gt; a</p>
+<p>Warning 8: this pattern-matching is not exhaustive. Here is an example of a value that is not matched: Plus (_, _)</p>
+<p>On peut écrire toutes sorte de pattern matching : on peut par exemple capturer des formes d'arbres particulières, du genre Plus(Moins( Nbr 5, a), Nbr b) , le compilateur continuera à vérifier que le &quot;switch/case&quot; reste exhaustif.</p>
+</div>
+<div class="section" id="quel-code-generer">
+<h1>8. Quel code génerer</h1>
+<p>Mini grammaire permettant de génerer une interface et quelques règles.
+Définition de la grammaire cible</p>
+<div class="section" id="boite-de-dialogue">
+<h2>Boite de dialogue</h2>
+<pre class="literal-block">
+&lt;div id=&quot;dialog&quot; title=&quot;Basic dialog&quot;&gt;
+ &lt;p&gt;This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the 'x' icon.&lt;/p&gt;
+&lt;/div&gt;
+</pre>
+<pre class="literal-block">
+function dialogAppear(id) {
+       $( id ).dialog();
+ }
+</pre>
+</div>
+<div class="section" id="slider">
+<h2>Slider</h2>
+<dl class="docutils">
+<dt>::</dt>
+<dd><p class="first">&lt;div id=&quot;slider&quot;&gt;&lt;/div&gt;</p>
+<dl class="last docutils">
+<dt>function sliderAppear(id,slideFunc) {</dt>
+<dd>$( id ).slider({slide:slideFunc});
+}</dd>
+</dl>
+</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="generation">
+<h1>9. Génération</h1>
+<div class="section" id="objectif">
+<h2>Objectif</h2>
+<p>Petite appli</p>
+<p>On utilise un slider qui dans certaines configurations autorise certaines choses</p>
+<p>Génération basique
+Le cas des règles</p>
+<p>[1] <a class="reference external" href="http://prolog.developpez.com/tutoriels/alain-colmerauer/histoire-prolog/">http://prolog.developpez.com/tutoriels/alain-colmerauer/histoire-prolog/</a></p>
+<p>[2] <a class="reference external" href="http://attempto.ifi.uzh.ch/site/">http://attempto.ifi.uzh.ch/site/</a></p>
+<p>[3] <a class="reference external" href="http://www.w3.org/Submission/SWRL/">http://www.w3.org/Submission/SWRL/</a></p>
+<p>[4] <a class="reference external" href="https://github.com/ontologiae/DRS-Analysis-Tool">https://github.com/ontologiae/DRS-Analysis-Tool</a></p>
+</div>
 </div>
 </div>
 </body>

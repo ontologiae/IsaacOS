@@ -8,8 +8,7 @@ Enfance de l'art
 ++++++++++++++++
 
 Depuis la naissance de l'ordinateur à la fin des années 1940, nombre d'ingénieurs et chercheurs rêvent d'apprendre à celle-ci de comprendre notre langage humain.
-Passé l'optimisme des premières années, les travaux ont trouvés une première réussite au début des années 1970, avec entre autre la naissance de Prolog.
-http://prolog.developpez.com/tutoriels/alain-colmerauer/histoire-prolog/
+Passé l'optimisme des premières années, les travaux ont trouvés une première réussite au début des années 1970, avec entre autre la naissance de Prolog.[1]
 
 En 1970, on arrivait, grâce à Prolog, à dialoguer de la manière suivante avec la machine :
  *Utilisateur*
@@ -53,6 +52,7 @@ L'analyse formelle a survécu en se spécialisant dans les langues contrôlées 
 
 Parmi tous les langues controllées, nous en avons choisi une - Attempto Controlled English - qui a plusieurs particularités intéressantes, mais dont la première est de proposer un parseur libre (LGPL).
 
+
 2. Expliquer ce qu'est Attempto : LGPL, un anglais contrôlé, avec partie pris de n'analyser que la syntaxe
 ---------------------------------------------------------------------------------------------------------- 
 
@@ -88,25 +88,22 @@ Analysons une première phrase, qui s'avère être une règle :
 
 ::
 
- $ ./ape.exe  -cparaphrase   -cdrs -guess -text 'If the last character of S is not "/" then Prog appends "/" to S.'
- <?xml version="1.0" encoding="UTF-8"?>
-  <apeResult>
-    <duration tokenizer="0.028" parser="0.007" refres="0.001"/>
-    <drs>drs([],[=&gt;(drs([A,B],[relation(A,of,B)-1/5,property(A,last,pos)-1/3,object(A,character,countable,na,eq,1)-1/4,-(drs([C],[predicate(C,be,A,string(/))-1/7])),object(B,something,dom,na,na,na)-1/6]),drs([D],[predicate(D,append,named('Prog'),string(/))-1/12,modifier_pp(D,to,B)-1/14]))])</drs>
-
-    <paraphrase>If there is a last character X1 of something X2 and it is false that the last character X1 is "/" then Prog appends "/" to X2.</paraphrase>
-    <messages>
-     <message
-  	importance="warning"
-  	type="word"
-  	sentence="1"
-  	token="11"
-  	value="Prog"
-  	repair="Undefined word. Interpreted as a singular proper name."/>
-	<message
-  	importance="warning" type="anaphor" sentence="1" token="4"
-	value="The definite noun phrase 'the character' does not have an antecedent and thus is not interpreted as anaphoric reference, but as a new indefinite noun phrase."
-	repair="If the definite noun phrase 'the character' should be an anaphoric reference then you must introduce an appropriate antecedent."/>
+  $ ./ape.exe  -cparaphrase   -cdrs -guess -text 'If the last character of S is not "/" then Prog appends "/" to S.'
+  <?xml version="1.0" encoding="UTF-8"?>
+   <apeResult>
+     <duration tokenizer="0.028" parser="0.007" refres="0.001"/>
+     <drs>drs([],[=&gt;(drs([A,B],[relation(A,of,B)-1/5,property(A,last,pos)-1/3,object(A,character,countable,na,eq,1)-1/4,-(drs([C],[predicate(C,be,A,string(/))-1/7])),object(B,something,dom,na,na,na)-1/6]),drs([D],[predicate(D,append,named('Prog'),string(/))-1/12,modifier_pp(D,to,B)-1/14]))])</drs>
+     <paraphrase>If there is a last character X1 of something X2 and it is false that the last character X1 is "/" then Prog appends "/" to X2.</paraphrase>
+     <messages>
+      <message
+        	importance="warning"
+  	        type="word"
+  		sentence="1"
+  		token="11"
+  		value="Prog"
+  		repair="Undefined word. Interpreted as a singular proper name."/>
+      <message
+  	importance="warning" type="anaphor" sentence="1" token="4" value="The definite noun phrase 'the character' does not have an antecedent and thus is not interpreted as anaphoric reference, but as a new indefinite noun phrase." repair="If the definite noun phrase 'the character' should be an anaphoric reference then you must introduce an appropriate antecedent."/>
     </messages>
   </apeResult>
 
@@ -146,7 +143,6 @@ Phrases un peu plus complexe :
 
 
 Règles :
-	*Every flower Jean gives to Mary makes mary loving Jean.*
 	*Every flower that Jean gives to Mary implies that Mary is happy.*
 	*Every flower that Jean gives to Mary can imply that Mary is happy.* On exprime ici une modalité
 
@@ -172,64 +168,214 @@ Avant d'étudier sa structure, nous allons expliciter les primitives importantes
 - Property : définit qu'un objet représenté par la variable A a pour adjectif blue.property(A,blue,pos). 
 		 pos signifie que l'on applique simplement l'adjectif au nom. Si l'on avait écrit *Jean gives a bluer flower to Mary.*,  on aurait property(A,blue,comp) qui indique une comparaison.
 
+Chaque DRS peut contenir un ou plusieurs DRS avec des opérateurs, ou une liste de primitives précédemment définies. On verra dans la section suivante, la grammaire complète des DRS.
 
+La plupart des phrases sont structurés sous la forme sujet + verbe [+ complément d'objet direct] [+ complément d'objet indirect], à l'aide des primitives object et predicate. Ces structures simple nous suffiront pour le moment.
 
 6. DRS Analysis Tool
 --------------------
 
-DRS Analysis Tool est une petite librairie en OCaml, disponible sur github [4], permettant de parser la structure de données DRS renvoyée par APE.
+DRS Analysis Tool est une petite librairie en OCaml, disponible sur github [4], permettant de parser la structure de donné DRS renvoyée par APE. 
+On dispose ainsi d'un AST (Abstract Syntax Tree) utilisable directement en Ocaml.
 Dans le fichier syntaxe.ml, on y trouve une définition de la grammaire du DRS dans un type OCaml :
 
 ::
-type fulldrs = FullDRS of domain * conditions
-and conditions = atom list
-and domain = var list
-and var = Var of string | SubAtom of atom | Num of int | ConstStr of name
 
-and adjectif = Adj of name
-and adverbe = Adv of name
-and preposition = Preposition of name
-and verbe = Verbe of name
-and noun = Nom of name
+ (* Un DRS est contitué d'un domaine - une liste de variables - et du corps du DRS proprement dit*)
+ type fulldrs = FullDRS of domain * conditions
 
-and pronom_interrogatif = Who | What | Which | How | Where | When
-and classtype = Dom | Mass | Countable
-and unittype = Kg | Na | Meter
-and op = Eq | Geq | Greater | Leq | Less | Exactly | NaOp 
-and degre = Pos | Pos_as | Comp | Comp_than | Sup
-and compTarget = Subj | Obj
-and countable = NotCountable | Number of int
-and grammaticalNumber = Plural | Singular | Partitive
+ (* Une condition est une liste d'atome*)
+ and conditions = atom list
+ and domain = var list
 
-and atom = 
-  Operator2 of operator * fulldrs * fulldrs 
-| Operator1 of operator * fulldrs  
-| PredicateIntransitive of var * verbe * var * grammaticalNumber
-| PredicateTransitive of var * verbe * var * var * grammaticalNumber
-| PredicateDiTransitive of var * verbe * var * var * var * grammaticalNumber
+ (* Une variable peut être une variable seule, un sous atome, un nombre ou une chaine*)
+ and var = Var of string | SubAtom of atom | Num of int | ConstStr of name
 
-| Object of var * noun * classtype * unittype * op * countable (*Ref,Noun,Class,Unit,Op,Count*) * int * int 
+ (* on définit ici toutes les primitives de base : adjectif, préposition, verbe, adverbe, noms...*)
+ and adjectif = Adj of name
+ and adverbe = Adv of name
+ and preposition = Preposition of name
+ and verbe = Verbe of name
+ and noun = Nom of name
+ 
+ and pronom_interrogatif = Who | What | Which | How | Where | When
+ and classtype = Dom | Mass | Countable
+
+ (* 2 unités prise en compte : masse et distance*)
+ and unittype = Kg | Na | Meter
+
+ (* Opérateurs de comparaison*)
+ and op = Eq | Geq | Greater | Leq | Less | Exactly | NaOp 
+ and degre = Pos | Pos_as | Comp | Comp_than | Sup
+ and compTarget = Subj | Obj
+ and countable = NotCountable | Number of int
+
+ and grammaticalNumber = Plural | Singular | Partitive
+ (* Le coeur de la grammaire *)
+ and atom = 
+ 
+ (* *)
+ | Operator2 of operator * fulldrs * fulldrs 
+ | Operator1 of operator * fulldrs  
+
+ | PredicateIntransitive of var * verbe * var * grammaticalNumber
+ | PredicateTransitive of var * verbe * var * var * grammaticalNumber
+ | PredicateDiTransitive of var * verbe * var * var * var * grammaticalNumber
+ 
+ | Object of var * noun * classtype * unittype * op * countable (*Ref,Noun,Class,Unit,Op,Count*) * int * int 
+ 
+ 
+ | Property1Ary of var * adjectif * degre 
+ | Property2Ary of var * adjectif * degre * var
+ | Property3Ary of var * adjectif * var * degre * compTarget * var
+ 
+ 
+ | Relation of var * var
+ | Modifier_Adv of var * adverbe * degre 
+ | Modifier_pp of var * preposition * var
+ 
+ | HasPart of var * var
+ | PartOf of var * var 
+ | Named of  name (**)
+ | String of  name
+ 
+ | Query of var * pronom_interrogatif
+ | Rien ;;
 
 
-| Property1Ary of var * adjectif * degre 
-| Property2Ary of var * adjectif * degre * var
-| Property3Ary of var * adjectif * var * degre * compTarget * var
+Utilisation
++++++++++++
 
 
-| Relation of var * var
-| Modifier_Adv of var * adverbe * degre 
-| Modifier_pp of var * preposition * var
+On peut disposer de l'AST d'un DRS en utilisant le REPL OCaml. Le projet est configuré pour utiliser Utop, un REPL amélioré (proposant entre autre un historique et la complétion).
 
-| HasPart of var * var
-| PartOf of var * var 
-| Named of  name (**)
-| String of  name
+::
+  $ make top
+ 
 
-| Query of var * pronom_interrogatif
-| Rien ;;
+  utop version 1.2.1 (using OCaml version 4.00.0)
 
+  $ parsecomplete "drs([A],[predicate(A,love,named('Jean'),named('Mary'))-1/2]).";;
+	- : Syntax.fulldrs = FullDRS ([Var "A"], [PredicateTransitive (Var "A", Verbe "love", SubAtom (Named "Jean"), SubAtom (Named "Mary"), Singular)])
 
 
+  $ parsecomplete "drs([],[=&gt;(drs([A,B],[object(A,flower,countable,na,eq,1)-1/2,predicate(B,give,named('Jean'),A,named('Mary'))-1/5]),drs([],[can(drs([C,D],[predicate(C,imply,A,D)-1/9,D:drs([E,F],[property(E,happy,pos)-1/13,predicate(F,be,named('Mary'),E)-1/12])]))]))]).";;
+
+    - : Syntax.fulldrs = FullDRS ([], 
+	[Operator2 (Imply,FullDRS ([Var "A"; Var "B"],
+    		[ Object (Var "A", Nom "flower", Countable, Na, Eq, Number 1, 1, 2); 
+	       	  PredicateDiTransitive (Var "B", Verbe "give", SubAtom (Named "Jean"), Var "A", SubAtom (Named "Mary"), Singular)]),
+	          FullDRS ([],
+    				[Operator1 (Can,
+					      FullDRS ([Var "C"; Var "D"],
+						       [PredicateTransitive (Var "C", Verbe "imply", Var "A", Var "D", Singular);
+						        SubDrs ("D", FullDRS ([Var "E"; Var "F"], 
+										[Property1Ary (Var "E", Adj "happy", Pos); 
+										 PredicateTransitive (Var "F", Verbe "be", SubAtom (Named "Mary"), Var "E", Singular)
+										]
+									     )
+								)
+							]
+			      			     )
+			   		  )
+	 	 		]
+			  )
+	 	   )
+	]
+     )
+
+
+7. Générer du code à partir d'une phrase
+----------------------------------------
+
+Une fois le DRS parsé, nous allons pouvoir inférer ce que l'on désir à partir de l'arbre syntaxique obtenu.
+Pour ce faire, nous allons user et abuser d'une fonctionnalité majeure d'OCaml (et de ses cousins Scala et Haskell) : le pattern matching.
+Le pattern matching est une sorte de switch case dopé aux stéroïdes. Si vous êtes habitués aux Enums de Java, disons que c'est la possibilité de donner des paramètres à enum et de se définir récursivement.
+
+Un expression mathématique du genre (5 + 9) - 5 peut s'écrire très facilement avec un type somme :
+type expre =
+| Plus of expre * expre
+| Moins of expre * expre
+| Nbr of int
+
+Ainsi (5 + 9) - 5 s'écrit Moins( Plus(Nbr 5, Nbr 9), Nbr 5), ce que l'on appelle une notation polonaise inversée.
+Une calculatrice s'écrit alors très simplement grace au pattern matching
+
+let rec calc expression =
+match expression with
+| Plus (a,b) -> calc a + calc b
+| Moins(a,b) -> calc a - calc b
+| Nbr   a    -> a
+Caml nous répond en typant cette fonction : val calc : expre -> int = <fun>
+
+
+Une des grandes forces d'Ocaml (et d'Haskell) est sa capacité à vous gronder s'il manque un cas.
+Ainsi, si l'on oubliait le cas  "plus" :
+let rec calc expression =
+match expression with
+| Moins(a,b) -> calc a - calc b
+| Nbr   a    -> a
+
+Warning 8: this pattern-matching is not exhaustive. Here is an example of a value that is not matched: Plus (_, _)
+
+
+On peut écrire toutes sorte de pattern matching : on peut par exemple capturer des formes d'arbres particulières, du genre Plus(Moins( Nbr 5, a), Nbr b) , le compilateur continuera à vérifier que le "switch/case" reste exhaustif.
+
+
+
+
+8. Quel code génerer ?
+----------------------
+
+Mini grammaire permettant de génerer une interface et quelques règles.
+Définition de la grammaire cible
+
+
+Boite de dialogue
++++++++++++++++++
+
+:: 
+
+ <div id="dialog" title="Basic dialog">
+  <p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the 'x' icon.</p>
+ </div>
+
+::
+
+ function dialogAppear(id) {
+ 	$( id ).dialog();
+  }
+
+
+Slider
+++++++
+
+::
+  <div id="slider"></div>
+
+  function sliderAppear(id,slideFunc) {
+    $( id ).slider({slide:slideFunc});
+    }
+
+
+
+
+
+9. Génération
+-------------
+
+Objectif
+++++++++
+
+Petite appli
+
+On utilise un slider qui dans certaines configurations autorise certaines choses 
+
+Génération basique
+Le cas des règles
+
+
+[1] http://prolog.developpez.com/tutoriels/alain-colmerauer/histoire-prolog/
 
 
 [2] http://attempto.ifi.uzh.ch/site/
