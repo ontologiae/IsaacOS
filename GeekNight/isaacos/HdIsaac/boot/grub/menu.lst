@@ -1,6 +1,0 @@
-default 0
-timeout 10
-
-title=IsaacOS
-root (hd0,0)
-kernel /IsaacKernel

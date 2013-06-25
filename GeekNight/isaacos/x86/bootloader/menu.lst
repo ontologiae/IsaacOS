@@ -1,7 +1,0 @@
-default 0
-timeout 10
-
-title=Pepin
-root (hd0,0)
-kernel /kernel
-boot
