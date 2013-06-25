@@ -1,0 +1,58 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := EXT2;
+  
+  
+  - bibliography:="http://www.lisaac.org";
+  - author      :="Simon Fuhlhaber / Jerome Hilbert";
+  - comment     :="EXT2 Type Partition .";
+  
+Section Inherit  
+  
+  + parent_partition_ext2:Expanded PARTITION_EXT2;
+  
+Section Private  
+
+  - sector:UINTEGER_32<- first_block_sector+(block-1)*step;
+
+Section Public
+
+  - make drv:DRIVE begin fsector:UINTEGER_32 <-
+  (
+    + buf:FAST_ARRAY(UINTEGER_8);
+    
+    drive := drv;
+    first_block_sector := (fsector+(SUPERBLOCK.sector));
+    buffer := FAST_ARRAY(UINTEGER_8).create_with_capacity 512;
+    drive.set_cursor first_block_sector;
+    drive.read buffer size 1;
+    buf:=FAST_ARRAY(UINTEGER_8).create_with_capacity (SUPERBLOCK.size);
+    0.to (SUPERBLOCK.size-1)do{i:INTEGER;
+      buf.add_last (buffer.item i);
+    };
+    superblock:=CONVERT(NATIVE_ARRAY(UINTEGER_8),SUPERBLOCK).on (buf.to_native_array);
+  );
+  
+  - make <-
+  (
+    set_path "/ext2";
+    set_no_inode 2;
+    set_type_code 2;
+    make_inode;
+  );
+  

@@ -1,0 +1,341 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := MOUSE;
+  
+  - comment     := "Mouse driver - PS/2";
+  - bibliography:= "http://www.lisaac.org";
+  - author      := "Benoit Sonntag (benoit.sonntag@lisaac.org), Jerome Boutet (pisteur@free.fr)";
+  
+Section Inherit
+
+  + parent_input:Expanded INPUT;
+  
+  + parent_window:Expanded AREA;
+    
+Section Interrupt
+  
+  
+  - interrupt_2c <-
+  ( + stat,tmp:UINTEGER_8;
+    + dx ,dy, x_new, y_new:INTEGER;
+    + right_new,left_new:BOOLEAN;
+    
+    // Read stat port.
+    stat:=SYSTEM.itemb 60h;
+    (((stat&00001000b)!=0) && {(stat&11000100b)=0}).if { 
+      
+      // Read dx.
+      wait_port;
+      dx:=SYSTEM.itemb 60h;
+      ((stat&00010000b)!=0).if {
+	dx := dx - 256; 
+      };
+      
+      // Read dy.
+      wait_port;
+      dy:=SYSTEM.itemb 60h;
+      ((stat&00100000b)!=0).if {
+	dy := dy - 256; 
+      };
+      
+      // Compute coord. with border test.
+      x_new := x_current + dx;
+      y_new := y_current - dy;
+      y_new := y_new.max y_minimum.min y_maximum;
+      x_new := x_new.max x_minimum.min x_maximum;
+      
+      // Read Stat buttons. 
+      left_new :=(stat&00000001b)!=0;
+      right_new:=(stat&00000010b)!=0;
+      
+      tmp:=(p_end+1)&003h;
+      buffer_event.item p_end.make (x_new,y_new) button (left_new,right_new);
+
+      (((tmp+2)&3)!=p_beg).if {
+	p_end:=tmp;
+      };
+      
+      // Update status.
+      x_current:=x_new;
+      y_current:=y_new;
+      right:=right_new;
+      left :=left_new;
+    };
+    
+    flush_port;
+  
+    // Acknowledge.
+    SYSTEM.putb 20h to 020h;
+    SYSTEM.putb 20h to 0A0h;
+  );
+  
+Section Public
+
+  - x_minimum:INTEGER;
+  - x_maximum:INTEGER;
+  
+  - y_minimum:INTEGER;
+  - y_maximum:INTEGER;
+  
+  - x_current:INTEGER;
+  - y_current:INTEGER; 
+  
+  - right:BOOLEAN;
+  - left:BOOLEAN;
+  
+Section Private
+    
+  - wait_port <-
+  (
+    {}.do_while {(SYSTEM.itemb 064h & 1)=0};
+  );
+  
+  - flush_port <-
+  (
+    { 
+      SYSTEM.itemb 60h; 
+    }.do_while {(SYSTEM.itemb 64h & 2)!=0};
+  );  
+  
+  - kbd_write cmd:UINTEGER_8 <-
+  (
+    flush_port;
+    SYSTEM.putb cmd to 64h;
+  );
+  
+  - aux_write cmd:UINTEGER_8 error msg:ABSTRACT_STRING <-
+  // Result: FAh Ack, or FEh resend
+  (
+    kbd_write 0D4h;
+    flush_port;
+    SYSTEM.putb cmd to 60h;
+    wait_port;
+    (SYSTEM.itemb 60h != 0FAh).if {
+      "MOUSE : ".print;
+      msg.print;
+      '\n'.print;
+    };
+  );
+  
+  - kbd_write_plus cmd:UINTEGER_8 <-
+  (
+    kbd_write 060h;
+    flush_port;    
+    SYSTEM.putb cmd to 60h;
+    flush_port;    
+  );
+  
+Section Private
+  
+  - buffer_event:FAST_ARRAY(EVENT_MOUSE);
+  - p_beg:UINTEGER_8;  // Pointer on the buffer (beginning)
+  - p_end:UINTEGER_8;  // Pointer on the buffer (end)
+
+Section Public
+  
+  //
+  // Creation / Initialisation.
+  //
+  
+  - make <-
+  ( + new_event:EVENT_MOUSE;
+    is_actif := TRUE;
+    //
+    // Mouse hardware configuration.
+    //
+    x_maximum := VIDEO.x_max;
+    y_maximum := VIDEO.y_max;       
+    
+    // Bit 0=1 : Enable IRQ01
+    // Bit 1=1 : Enable IRQ12
+    // Bit 4=0 : Not Disable Keyboard.
+    // Bit 5=0 : Not Disable Aux.
+    kbd_write_plus 047h;
+    kbd_write     0A8h; // Enable mouse interface
+    
+    // Init device.
+    aux_write 0F4h error "Init device fail"; // Enable aux device
+            
+    // Set Rate.
+    aux_write 0F3h error "Set rate fail!"; // Set sample rate (Result:FAh Ack, or FEh resend)
+    aux_write 100d error "Set rate fail!"; // 100 echantillons par seconde (Result:FAh Ack, or FEh resend)
+        
+    // Resolution.
+    aux_write 0E8h error "Set resolution fail!"; // Set resolution
+    aux_write 003d error "Set resolution fail!"; // 8 pas par mm
+        
+    // Scalling.
+    aux_write 0E7h error "Set scaling fail!"; // Set 2:1 scaling
+    
+    //
+    // Software configuration.
+    //
+    buffer_event := FAST_ARRAY(EVENT_MOUSE).create 4;
+    0.to 3 do { j:INTEGER;
+      new_event := EVENT_MOUSE.clone;
+      buffer_event.put new_event to j;
+      (j != 0).if {
+	new_event.set_prev (buffer_event.item (j-1));
+      };
+    };
+    buffer_event.first.set_prev new_event;
+    
+    mask := FAST_ARRAY(UINTEGER_16).create 16;
+    make (DESK.physical_screen) from (x_current,y_current) size (16,16);
+    
+    SYSTEM.new_interrupt interrupt_2c to 2Ch;
+    SYSTEM.irq_on 12;   // Active IRQ12
+  );
+  
+  - get_event <-
+  ( + p:INTEGER;
+    + evt:EVENT_MOUSE;
+    
+    p := p_beg;
+    (p != p_end).if {
+      ((x_current != x_window) || {y_current != y_window}).if {
+	set_position (x_current,y_current);
+      };
+      { p != p_end }.while_do {
+	evt := buffer_event.item p;
+	(list_client.lower).to (list_client.upper) do { j:INTEGER;
+	  list_client.item j.receive (buffer_event.item p);
+	}; 
+	p := (p + 1) & 03h;      
+      };    
+    };
+  );
+    
+  - acknowledge <-
+  (
+    p_beg := (p_beg+1) & 03h;
+  );
+ 
+  //
+  // Display.
+  //
+  
+  // BSBS: A refaire avec une bitmap en dehors contenant le dessin avec une couleur de mask!!
+  // Plus simple, plus puissant, plus rapide !
+  
+  + mask:FAST_ARRAY(UINTEGER_16);
+
+  - pixel_hard (x,y:INTEGER) color col:UINTEGER_32<-
+  ( + m:UINTEGER_16;
+    ? {x<16};
+    ? {y<16};
+
+    m:=mask.item y;
+    m:=m | (1<<x);
+    mask.put m to y;
+
+    parent_window.pixel_hard (x,y) color col;
+  );
+  
+  - line_h_hard (x0,y0:INTEGER) until x1:INTEGER color col:UINTEGER_32<-
+  ( + m:UINTEGER_16;
+    ? {x0<16};
+    ? {y0<16};
+    ? {x1<16};
+    
+    m:=mask.item y0;
+    x0.to x1 do { xx:INTEGER;
+      m:=m | (1<<xx);
+    };
+    
+    mask.put m to y0;
+    parent_window.line_h_hard (x0,y0) until x1 color col;
+  );
+
+  - slave_pixel_hard (x,y:INTEGER) color col:UINTEGER_32<- 
+  ( + m:UINTEGER_16;
+    
+    m:=mask.item y;
+    ((m & (1<<x))=0).if {
+      parent_window.pixel_hard (x,y) color col;
+    };
+  );
+  
+  - slave_line_h_hard (x1,y:INTEGER) until x2:INTEGER color col:UINTEGER_32<- 
+  ( + m:UINTEGER_16;
+    
+    m:=mask.item y;
+    x1.to x2 do { xx:INTEGER;
+      ((m & (1<<xx))=0).if {
+	parent_window.pixel_hard (xx,y) color col;
+      };
+    };
+  );  
+  
+  - slave_line_h_hard (x1,y:INTEGER) until x2:INTEGER image line:ABSTRACT_BMP_LINE offset ofs:INTEGER <-
+  ( + m:UINTEGER_16;
+    + col:UINTEGER_32;
+    + ofs_img:INTEGER;
+    ofs_img := ofs;
+    m:=mask.item y;
+    x1.to x2 do { xx:INTEGER;
+      ((m & (1<<xx))=0).if {
+	col := line.get_color ofs_img;	
+	parent_window.pixel_hard (xx,y) color col;
+      };     
+      ofs_img := ofs_img + 1;
+    };
+  );
+  
+  - draw (x0,y0:INTEGER) to (x1,y1:INTEGER) <-
+  (
+    clipping (x0,y0) to (x1,y1);
+    
+    color white;
+    poly_move_to (1,1);
+    poly_line_to (9,9);
+    poly_line_to (6,9);
+    poly_line_to (8,14);
+    poly_line_to (5,14);
+    poly_line_to (5,9);
+    poly_line_to (1,9);    
+    poly_move_to (1,1);    
+    poly_trace;
+    
+    color red;
+    line_v (0,0)  until 10;
+    line_h (1,10) until 4;
+    line_v (4,11) until 15;
+    line_h (5,15) until 9;
+    line (9,15) to (7,10);
+    line_h (7,10) until 10;
+    line (1,0) to (10,9);
+  );
+  
+  - get_object (x,y:INTEGER) :AREA <-
+  (
+    NULL
+  );
+ 
+  
+  
+  
+
+
+
+
+
+
+
+
+

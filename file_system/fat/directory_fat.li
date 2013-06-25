@@ -1,0 +1,98 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := DIRECTORY_FAT;
+  
+  - bibliography:= "http://www.lisaac.org";
+
+  - author      := "Benoit Sonntag (benoit.sonntag@lisaac.org)";  
+
+  - comment     := "Directory for FAT";
+  
+Section Inherit
+  
+  + parent_entry_fat:Expanded ENTRY_FAT;
+  + parent_directory:Expanded DIRECTORY;
+  
+Section Public
+  
+  - is_open:BOOLEAN <- (list != NULL);
+  
+  - open:BOOLEAN <-
+  ( + new_entry:ENTRY_FAT;
+    + nb_entry_cluster:UINTEGER_32;
+    + entry:SFN_FAT;
+    + j:UINTEGER_32;
+    + buffer_raw:NATIVE_ARRAY(UINTEGER_8);
+    + partition:PARTITION_FAT;    
+    + base,cpt:INTEGER;
+    + is_again:BOOLEAN;
+    
+    (is_open).if_false {    
+      partition ?= FILE_SYSTEM.get_partition Self;
+      partition.set_cluster position;
+      list := LINKED_LIST(ENTRY).create;
+      nb_entry_cluster := partition.step_byte >> 5;
+      {
+        partition.read;            
+        is_again := partition.next_cluster;        
+        buffer_raw := partition.buffer.to_native_array;
+        j := 0;
+        {
+          entry := CONVERT(NATIVE_ARRAY(UINTEGER_8),SFN_FAT).on (buffer_raw + (j*SFN_FAT.object_size));          
+          (entry.is_label).if {
+            string_tmp.copy "/";
+            entry.name_in string_tmp;            
+            cpt := 1;              
+            base := string_tmp.count;
+            {alias.has string_tmp}.while_do {
+              string_tmp.keep_head base;
+              cpt.append_in string_tmp;
+              cpt := cpt + 1;
+            };
+            set_path string_tmp;            
+          }.elseif {entry.is_valid && {!entry.is_me} && {!entry.is_parent}} then {
+            (entry.is_directory).if{
+              new_entry := DIRECTORY_FAT.create path with entry;
+            } else {
+              new_entry := STD_FILE_FAT.create path with entry;
+            };                                    
+            list.add_last new_entry;
+            alias.put new_entry to (new_entry.path);             
+          };
+          j:=j+1;
+        }.do_while {(j < nb_entry_cluster) && {!entry.is_null}};
+      }.do_while {(!entry.is_null) && {is_again}};
+    };
+    TRUE
+  );
+  
+Section DIRECTORY
+  
+  
+  - physical_make_directory new_path:STRING :BOOLEAN <-
+  ( 
+    not_yet_implemented;
+    FALSE
+  );
+
+  - physical_make_file new_path:STRING :BOOLEAN <-
+  ( 
+    not_yet_implemented;
+    FALSE
+  );
+

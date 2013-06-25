@@ -1,0 +1,389 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := MBR;
+  
+  - bibliography:= "http://www.lisaac.org";
+
+  - author      := "Benoit Sonntag (benoit.sonntag@lisaac.org), Jerome Boutet (pisteur@free.fr)";  
+
+  - comment     := "Master Boot Record";
+
+Section Inherit  
+  
+  - parent_object:OBJECT := OBJECT;
+  
+Section Mapping
+  
+  + flag_boot:UINTEGER_8;
+  
+  + head_begin:UINTEGER_8;
+  
+  + cylinder_sector_begin:UINTEGER_16;
+  
+  + map_type:UINTEGER_8;
+  
+  + head_end:UINTEGER_8;
+  
+  + cylinder_sector_end:UINTEGER_16;
+  
+  + map_mbr_first_sector:UINTEGER_32;
+  
+  + size:UINTEGER_32;
+  
+Section Private
+  
+  - cylinder n:UINTEGER_16 :UINTEGER_16 <- ((n>>8) | ((n & 0C0h)<<2));
+  
+  - sector n:UINTEGER_16 :UINTEGER_16   <- (n & 3Fh);
+  
+Section Public  
+
+  - mbr_first_sector:UINTEGER_32 <- map_mbr_first_sector;
+  - type:UINTEGER_8 <- map_type;
+
+  - is_active:BOOLEAN <- (flag_boot=80h);
+  
+  - cylinder_begin:UINTEGER_16 <- cylinder cylinder_sector_begin;
+  
+  - cylinder_end:UINTEGER_16   <- cylinder cylinder_sector_end;
+
+  - sector_begin:UINTEGER_16   <- sector cylinder_sector_begin;
+  
+  - sector_end:UINTEGER_16     <- sector cylinder_sector_end;
+  
+  - is_fat12:BOOLEAN <-
+  (
+    (type=001h) || {type=011h} || 
+    {type=08Dh} || {type=0AAh} || 
+    {type=0C1h} || {type=0D1h} || 
+    {type=0E1h}
+  );
+
+  - is_fat16:BOOLEAN <-
+  (
+    (type=004h) || {type=006h} || 
+    {type=00Eh} || {type=014h} || 
+    {type=016h} || {type=01Eh} || 
+    {type=090h} || {type=092h} ||
+    {type=09Ah} || {type=0C4h} || 
+    {type=0C6h} || {type=0CEh}
+  );
+
+  - is_fat32:BOOLEAN <-
+  (
+    (type=00Bh) || {type=00Ch} || 
+    {type=01Bh} || {type=01Ch} || 
+    {type=08Bh} || {type=08Ch} || 
+    {type=097h} || {type=098h} ||
+    {type=0CBh} || {type=0CCh}
+  );
+  
+  - is_ext2:BOOLEAN <-
+  (
+    type=083h
+  );
+  
+  - print <-
+  ( 
+    "type ".print;
+    type.to_hexadecimal.print;
+    "h : ".print;
+    
+    (type)
+    .when 000h then { "Not found\n".print; }
+    .when 001h then { "FAT12 (< 10 M)\n".print; }
+    .when 002h then { "XENIX root\n".print; }
+    .when 003h then { "XENIX /usr\n".print; }
+    .when 004h then { "FAT16 (< 32 M)\n".print; }
+    .when 005h then { "Etendue\n".print; }
+    .when 006h then { "FAT16 (>32 M et <2 G)\n".print; }
+    .when 007h then { "OS/2, HPFS, NTFS, QNX 2.x\n".print; }
+    .when 008h then { "SplitDrive QNX 1.x et 2.x\n".print; }
+    .when 009h then { "AIX data, Coherent FileSystem\n".print; }
+    .when 00Ah then { "OS/2 boot manager, Coherent swap, OPUS\n".print; }
+    .when 00Bh then { "FAT32(>2 G et <2047G)\n".print; }
+    .when 00Ch then { "FAT32(>2 G et <2047G) LBA\n".print; }
+    .when 00Dh then { "non attribu�\n".print; }
+    .when 00Eh then { "FAT16 (>32 M et <2 G) LBA\n".print; }
+    .when 00Fh then { "Etendue\"x\" = Etendue + LBA\n".print; }
+    .when 010h then { "OPUS\n".print; }
+    .when 011h then { "FAT12 cach�e\n".print; }
+    .when 012h then { "Diagnostics COMPAQ\n".print; }
+    .when 013h then { "non attribu�\n".print; }
+    .when 014h then { "FAT16 (<32 M) cachee\n".print; }
+    .when 015h then { "Free type...\n".print; }
+    .when 016h then { "FAT16 (>32 M) cachee\n".print; }
+    .when 017h then { "HPFS - NTFS cachee\n".print; }
+    .when 018h then { "Windows swapfile\n".print; }
+    .when 019h then { "Willowtech Photon coS&nbsp;\n".print; }
+    .when 01Ah then { "Free type...\n".print; }
+    .when 01Bh then { "FAT32 cachee\n".print; }
+    .when 01Ch then { "FAT32x cachee\n".print; }
+    .when 01Dh then { "Free type...\n".print; }
+    .when 01Eh then { "FAT16x cachee\n".print; }
+    .when 01Fh then { "Free type...\n".print; }
+    .when 020h then { "Willowsoft OFS1\n".print; }
+    .when 021h then { "Oxygen File System\n".print; }
+    .when 022h then { "Oxygen Extended\n".print; }
+    .when 023h then { "reserved\n".print; }
+    .when 024h then { "NEC DOS 3.x\n".print; }
+    .when 025h then { "Free type...\n".print; }
+    .when 026h then { "reserved\n".print; }
+    .when 027h then { "Free type...\n".print; }
+    .when 028h then { "Free type...\n".print; }
+    .when 029h then { "Free type...\n".print; }
+    .when 02Ah then { "Free type...\n".print; }
+    .when 02Bh then { "Free type...\n".print; }
+    .when 02Ch then { "Free type...\n".print; }
+    .when 02Dh then { "Free type...\n".print; }
+    .when 02Eh then { "Free type...\n".print; }
+    .when 02Fh then { "Free type...\n".print; }
+    .when 030h then { "Free type...\n".print; }
+    .when 031h then { "reserved\n".print; }
+    .when 032h then { "Free type...\n".print; }
+    .when 033h then { "reserved\n".print; }
+    .when 034h then { "reserved\n".print; }
+    .when 035h then { "Journaling FS OS/2 ou eCS\n".print; }
+    .when 036h then { "reserved\n".print; }
+    .when 037h then { "Free type...\n".print; }
+    .when 038h then { "THEOS ver 3.2 2 Go\n".print; }
+    .when 039h then { "Plan 9, THEOS ver 4 spanned\n".print; }
+    .when 03Ah then { "THEOS ver 4 4Go\n".print; }
+    .when 03Bh then { "THEOS ver 4 �tendue\n".print; }
+    .when 03Ch then { "PartitionMagic recovery\n".print; }
+    .when 03Dh then { "Free type...\n".print; }
+    .when 03Eh then { "Free type...\n".print; }
+    .when 03Fh then { "Free type...\n".print; }
+    .when 040h then { "VENIX\n".print; }
+    .when 041h then { "MINIX + DRDOS Personal RISC Boot Power PC Reference Platform\n".print; }
+    .when 042h then { "Linux swap + DRDOS SFS Windows 2000\n".print; }
+    .when 043h then { "Linux native + DRDOS\n".print; }
+    .when 044h then { "Free type...\n".print; }
+    .when 045h then { "Boot US boot manager, EUMEL/Elan\n".print; }
+    .when 046h then { "EUMEL/Elan\n".print; }
+    .when 047h then { "EUMEL/Elan\n".print; }
+    .when 048h then { "EUMEL/Elan\n".print; }
+    .when 049h then { "Free type...\n".print; }
+    .when 04Ah then { "Free type...\n".print; }
+    .when 04Bh then { "Free type...\n".print; }
+    .when 04Ch then { "Free type...\n".print; }
+    .when 04Dh then { "QNX4.x\n".print; }
+    .when 04Eh then { "QNX4.x 2�me partition\n".print; }
+    .when 04Fh then { "QNX4.x 3�me partition, Oberon\n".print; }
+    .when 050h then { "OnTrack Disk Manager, Lynx RTOS, Oberon native\n".print; }
+    .when 051h then { "OnTrack Disk Manager RW Novell\n".print; }
+    .when 052h then { "Microport CP/M\n".print; }
+    .when 053h then { "Disk Manager 6.0, Aux3\n".print; }
+    .when 054h then { "Disk Manager 6.0 Dynamic Drive Overlay\n".print; }
+    .when 055h then { "EZ-Drive\n".print; }
+    .when 056h then { "Golden Bow, EZ-BIOS\n".print; }
+    .when 057h then { "DrivePro VNDI\n".print; }
+    .when 058h then { "Free type...\n".print; }
+    .when 059h then { "Free type...\n".print; }
+    .when 05Ah then { "Free type...\n".print; }
+    .when 05Bh then { "Free type...\n".print; }
+    .when 05Ch then { "Priam EDisk\n".print; }
+    .when 05Dh then { "Free type...\n".print; }
+    .when 05Eh then { "Free type...\n".print; }
+    .when 05Fh then { "Free type...\n".print; }
+    .when 060h then { "Free type...\n".print; }
+    .when 061h then { "SpeedStor\n".print; }
+    .when 062h then { "Free type...\n".print; }
+    .when 063h then { "Unix System V GNU HURD\n".print; }
+    .when 064h then { "Novell 286 PC-ARMOUR\n".print; }
+    .when 065h then { "Novell 386\n".print; }
+    .when 066h then { "Novell Netware SMS\n".print; }
+    .when 067h then { "Novell\n".print; }
+    .when 068h then { "Novell\n".print; }
+    .when 069h then { "Novell Netware NSS\n".print; }
+    .when 06Ah then { "Free type...\n".print; }
+    .when 06Bh then { "Free type...  &nbsp;\n".print; }
+    .when 06Ch then { "Free type...\n".print; }
+    .when 06Dh then { "Free type...  &nbsp;\n".print; }
+    .when 06Eh then { "Free type...  &nbsp;\n".print; }
+    .when 06Fh then { "Free type...\n".print; }
+    .when 070h then { "DiskSecure Multi-Boot\n".print; }
+    .when 071h then { "reserved\n".print; }
+    .when 072h then { "reserved\n".print; }
+    .when 073h then { "reserved\n".print; }
+    .when 074h then { "Scramdisk\n".print; }
+    .when 075h then { "IBM PC/IX\n".print; }
+    .when 076h then { "reserved\n".print; }
+    .when 077h then { "VNDI\n".print; }
+    .when 078h then { "XOSL Bootloader\n".print; }
+    .when 079h then { "Free type...\n".print; }
+    .when 07Ah then { "Free type...\n".print; }
+    .when 07Bh then { "Free type...\n".print; }
+    .when 07Ch then { "Free type...\n".print; }
+    .when 07Dh then { "Free type...\n".print; }
+    .when 07Eh then { "Free type...\n".print; }
+    .when 07Fh then { "Free type...\n".print; }
+    .when 080h then { "MINIX (->1.4a)\n".print; }
+    .when 081h then { "MINIX (1.4b ->), Mitac Disk Manager\n".print; }
+    .when 082h then { "Solaris X86, LINUX swap, Prime\n".print; }
+    .when 083h then { "LINUX native (ext2fs)\n".print; }
+    .when 084h then { "OS/2 cachee, Hibernation\n".print; }
+    .when 085h then { "Linux etendue\n".print; }
+    .when 086h then { "agr�gat FAT (NT)\n".print; }
+    .when 087h then { "agr�gat NTFS (NT)\n".print; }
+    .when 088h then { "Free type...\n".print; }
+    .when 089h then { "Free type...\n".print; }
+    .when 08Ah then { "Linux Kernel\n".print; }
+    .when 08Bh then { "FAT32 miroir\n".print; }
+    .when 08Ch then { "FAT32x Miroir\n".print; }
+    .when 08Dh then { "FAT12 cachee (FreeFDISK)\n".print; }
+    .when 08Eh then { "Linux Logical Volume Manager\n".print; }
+    .when 08Fh then { "Free type...\n".print; }
+    .when 090h then { "FAT16 cachee (FreeFDISK)\n".print; }
+    .when 091h then { "Etendue cachee (FreeFDISK)\n".print; }
+    .when 092h then { "FAT16 cachee (FreeFDISK)\n".print; }
+    .when 093h then { "Amoeba, Linux native cachee\n".print; }
+    .when 094h then { "Amoeba bad block table\n".print; }
+    .when 095h then { "MIT EXOPC native\n".print; }
+    .when 096h then { "Free type...\n".print; }
+    .when 097h then { "FAT32 cachee (FreeFDISK)\n".print; }
+    .when 098h then { "FAT32x cachee (FreeFDISK)\n".print; }
+    .when 099h then { "DCE376 logical drive\n".print; }
+    .when 09Ah then { "FAT16x cachee (FreeFDISK)n".print; }
+    .when 09Bh then { "etendue X cachee (FreeFDISK)\n".print; }
+    .when 09Ch then { "Free type...\n".print; }
+    .when 09Dh then { "Free type...\n".print; }
+    .when 09Eh then { "Free type...\n".print; }
+    .when 09Fh then { "BSD/OS\n".print; }
+    .when 0A0h then { "hibernation\n".print; }
+    .when 0A1h then { "reserved\n".print; }
+    .when 0A2h then { "Free type...\n".print; }
+    .when 0A3h then { "reserved\n".print; }
+    .when 0A4h then { "reserved\n".print; }
+    .when 0A5h then { "BSD\n".print; }
+    .when 0A6h then { "OpenBSD\n".print; }
+    .when 0A7h then { "NEXTSTEP\n".print; }
+    .when 0A8h then { "Free type...\n".print; }
+    .when 0A9h then { "NetBSD\n".print; }
+    .when 0AAh then { "FAT12 1,44Mo Olivetti\n".print; }
+    .when 0ABh then { "Free type...\n".print; }
+    .when 0ACh then { "Free type...\n".print; }
+    .when 0ADh then { "Free type...\n".print; }
+    .when 0AEh then { "ShagOS filesystem\n".print; }
+    .when 0AFh then { "ShagOS swap partition\n".print; }
+    .when 0B0h then { "Free type...\n".print; }
+    .when 0B1h then { "reserved\n".print; }
+    .when 0B2h then { "Free type...\n".print; }
+    .when 0B3h then { "reserved\n".print; }
+    .when 0B4h then { "reserved\n".print; }
+    .when 0B5h then { "Free type...\n".print; }
+    .when 0B6h then { "reserved\n".print; }
+    .when 0B7h then { "BSDI BSD/386\n".print; }
+    .when 0B8h then { "BSDI BSD/386 swap\n".print; }
+    .when 0B9h then { "Free type...\n".print; }
+    .when 0BAh then { "Free type...\n".print; }
+    .when 0BBh then { "Free type...\n".print; }
+    .when 0BCh then { "Free type...\n".print; }
+    .when 0BDh then { "Free type...\n".print; }
+    .when 0BEh then { "Solaris 8 boot\n".print; }
+    .when 0BFh then { "Free type...\n".print; }
+    .when 0C0h then { "CTOS REAL/32 secure NTFT\n".print; }
+    .when 0C1h then { "FAT12 DRDOS\n".print; }
+    .when 0C2h then { "Linux swap cachee\n".print; }
+    .when 0C3h then { "Linux cachee\n".print; }
+    .when 0C4h then { "FAT16 <32M DRDOS\n".print; }
+    .when 0C5h then { "Free type...\n".print; }
+    .when 0C6h then { "FAT16 >= 32M DRDOS, FAT16 corrompue (NT)\n".print; }
+    .when 0C7h then { "NTFS corrompue (NT), Syrinx boot\n".print; }
+    .when 0C8h then { "Free type...\n".print; }
+    .when 0C9h then { "Free type...\n".print; }
+    .when 0CAh then { "Free type...\n".print; }
+    .when 0CBh then { "FAT32 DRDOS\n".print; }
+    .when 0CCh then { "FAT32x DRDOS\n".print; }
+    .when 0CDh then { "CTOS\n".print; }
+    .when 0CEh then { "FAT16x DRDOS\n".print; }
+    .when 0CFh then { "Free type...\n".print; }
+    .when 0D0h then { "REAL32\n".print; }
+    .when 0D1h then { "Multiuser DOS, secured FAT12\n".print; }
+    .when 0D2h then { "Free type...\n".print; }
+    .when 0D3h then { "Free type...\n".print; }
+    .when 0D4h then { "Multiuser\n".print; }
+    .when 0D5h then { "Multiuser\n".print; }
+    .when 0D6h then { "Multiuser\n".print; }
+    .when 0D7h then { "Free type...\n".print; }
+    .when 0D8h then { "CP/M-86\n".print; }
+    .when 0D9h then { "Free type...\n".print; }
+    .when 0DAh then { "Non-FS Dat  a\n".print; }
+    .when 0DBh then { "Digital Research, CP/M, Concurrent CP/M, Concurent DOS, CTOS, KDG Telemetry,SCPU boot\n".print; }
+    .when 0DCh then { "CTOS\n".print; }
+    .when 0DDh then { "CTOS cachee\n".print; }
+    .when 0DEh then { "Free type...\n".print; }
+    .when 0DFh then { "DG/UX virtual disk manager\n".print; }
+    .when 0E0h then { "ST AVFS\n".print; }
+    .when 0E1h then { "SpeedStor FAT12\n".print; }
+    .when 0E2h then { "Free type...\n".print; }
+    .when 0E3h then { "SpeedStor\n".print; }
+    .when 0E4h then { "SpeedStor etendue\n".print; }
+    .when 0E5h then { "reserved\n".print; }
+    .when 0E6h then { "reserved\n".print; }
+    .when 0E7h then { "Free type...\n".print; }
+    .when 0E8h then { "Free type...\n".print; }
+    .when 0E9h then { "Free type...\n".print; }
+    .when 0EAh then { "Free type...\n".print; }
+    .when 0EBh then { "Be FS\n".print; }
+    .when 0ECh then { "Free type...\n".print; }
+    .when 0EDh then { "Free type...\n".print; }
+    .when 0EEh then { "EFI MBR\n".print; }
+    .when 0EFh then { "EFI\n".print; }
+    .when 0F0h then { "Linux/PA-RISC boot loader\n".print; }
+    .when 0F1h then { "SpeedStor\n".print; }
+    .when 0F2h then { "DOS 3.3+ secondary partition\n".print; }
+    .when 0F3h then { "reserved  &nbsp;\n".print; }
+    .when 0F4h then { "SpeedStor large Prologue single-volume\n".print; }
+    .when 0F5h then { "Prologue multi-volume\n".print; }
+    .when 0F6h then { "reserved\n".print; }
+    .when 0F7h then { "Free type...\n".print; }
+    .when 0F8h then { "Free type...\n".print; }
+    .when 0F9h then { "Free type...\n".print; }
+    .when 0FAh then { "Free type...\n".print; }
+    .when 0FBh then { "VMware File System\n".print; }
+    .when 0FCh then { "VMware Swap\n".print; }
+    .when 0FDh then { "Linux raid\n".print; }
+    .when 0FEh then { "SpeedStor > 1024 cyl, IBM PS/2 IML, Windows NT Disk Administrator, Linux Logical Volume Manager\n".print; }
+    .when 0FFh then { "Xenix Bad Block Table\n".print; };
+
+    (is_active).if {
+      "Active.".print;
+    } else {
+      "Not active.".print;
+    };
+    "\n\tBegin\t Head=".print;
+    head_begin.print;
+    " Cylinder=".print;
+    cylinder_begin.print;
+    " Sector=".print;
+    sector_begin.print;
+    
+    "\n\tEnd\t Head=".print;
+    head_end.print;
+    " Cylinder=".print;
+    cylinder_end.print;
+    " Sector=".print;
+    sector_end.print;
+    
+    "\n\tFirst sector=".print;
+    mbr_first_sector.print;
+    "\n\tSize=".print;
+    (size>>11).print;
+    " MB.\n".print;
+  );

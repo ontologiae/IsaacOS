@@ -1,0 +1,230 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+
+  + name    := STARTUP;
+      
+  - bibliography:="http://www.lisaac.org";
+  - author      :="Sonntag Benoit (benoit.sonntag@lisaac.org)";
+  - comment     :="Startup system : First object.";
+
+ // - version :="1.0";  
+  - date    :="2003/04";
+  
+// BUG: L'inclusion du parent dans fils (je genere un =, gcc genere un memcpy)
+  - external := `
+/* 
+#include <signal.h>  
+__sighandler_t signal(int signum,__sighandler_t handler) { return(handler); }*/
+void *memcpy(void *dest,const void *src,int n) 
+{ int j;
+  
+  for (j=0;j<n;j++) ((char*)dest)[j] = ((char*)src)[j];
+  return dest;
+};
+
+
+`;
+  
+Section Inherit  
+  
+  - parent_object:OBJECT := OBJECT;  
+  
+  
+Section Public
+/*
+  - bitmap:ABSTRACT_BITMAP := 
+  ( + result:ABSTRACT_BITMAP;
+    
+    result := BITMAP(PIXEL_24).create (90,30);
+    result.color (result.red);
+    result.print "No image" to (10,10);
+    result
+  );
+*/  
+
+  - main <-
+  ( + dir:DIRECTORY;   
+    
+    "Activation GDT\n".print;
+   // GDT.add 0h limit 0h type 0h;  
+
+  /*  GDT.add 0h limit 0FFFFFh type 9Bh; 
+    GDT.add 0h limit 0FFFFFh type 93h; 
+    GDT.add 0h limit 0h type 97h; 
+    GDT.add 0h limit 0FFFFFh type 0FFh; 
+    GDT.add 0h limit 0FFFFFh type 0F3h; 
+    GDT.add 0h limit 0 type 0F7h; */
+
+  //  GDT.active_gdt;
+//    "System initialization..\n".print;
+
+ // SYSTEM.make;
+   // "Opening FileSystem...\n".print;
+ 
+  //FILE_SYSTEM.open;
+/*
+  
+  (FILE_SYSTEM.is_open).if {     
+    FILE_SYSTEM.print;
+  } else {
+    "FILE SYSTEM close\n".print;
+  };
+ 
+     
+  dir ?= FILE_SYSTEM.get_entry "icons";
+  (dir = NULL).if{
+    "\ndirectory is NULL\n".print;
+  } else {
+    dir.open;
+    dir.print;
+  };
+  */
+  
+
+     
+     // cas de plantage compilo : réactiver ça :
+   //  VIDEO.auto_make;        
+   //  CLOCK.make; 
+    /* 
+     DESK.make VIDEO scale (2,1) with (
+       DESK_BOARD.create "freedos/icons/".fix_height / G_RAW.create (G_IMG.create "freedos/icons/isaac.ai")
+     );*/
+     
+    //VIDEO.close;
+ //   die_with_code exit_success_code;  
+  );
+  
+ /* 
+
+
+
+
+
+
+    /*
+   mov eax,0
+          mov ebx,0FFFFFh    ; desc 08h : CODE segment.
+          mov cx,0809Bh      ; Code 16 bits (Flat mode).  
+          call desc
+        
+          ; *** DATA 16 Bits ***
+          mov eax,0
+          mov ebx,0FFFFFh     ; desc 10h : DATA 16Bits segment.
+          mov cx,08093h      ; Data Fixe (Flat mode)
+          call Desc
+
+          ; *** CODE 32 Bits ***
+          mov eax,0
+          mov ebx,0FFFFFh    ; desc 18h : CODE segment.
+          mov cx,0C09Bh      ; Code 32 bits.  
+          call desc
+        
+          ; *** DATA 32 Bits ***
+          mov eax,0
+          mov ebx,0FFFFFh     ; desc 20h : DATA segment.
+          mov cx,0C093h        ; Data Fixe
+          call Desc
+    
+    */
+    
+  //  SCHEDULER.make;
+
+   // th := THREAD.create (10,10) message "ISAAC" color 12;
+   // THREAD2.create;
+
+    /*
+    th := THREAD.create (20,15) message "VIVE NOUS" color 10;
+    th := THREAD.create (30,10) message "VIVE ISAAC" color 1;
+    th := THREAD.create (40,10) message "VIVE COP" color 6;
+    th := THREAD.create (20,10) message "VIVE NEWTON" color 8Ch;
+    */
+    /*
+    th := THREAD.create (10,10) message "ISAAC" color 12;
+    */    
+  //  { 
+     // "Life\n".print;
+     //      `asm("hlt")`;
+     //KEYBOARD.wait_key;
+     //'\n'.print;
+     
+  //  }.loop_infinitely;
+  /*   
+  THREAD.wake_up THREAD;
+  THREAD.zombie THREAD;
+  THREAD.wake_up THREAD2;
+  THREAD.zombie THREAD2;
+  */
+/*
+  dir ?= FILE_SYSTEM.get_entry "ext2";
+  
+  (dir = NULL).if{
+    "\ndirectory ext2 is NULL\n".print;
+  } else {
+    dir.open;
+    dir.print;
+  };
+  */ 
+  /*           
+    (
+       + std,std1:STD_FILE;
+       + fa:FAST_ARRAY(CHARACTER);
+       + s:STRING;
+       
+       s := STRING.create 30;
+       s.copy "YESSSS, ISAAC POWER !!!!!\n";
+       std ?= dir.get_entry "media.bmp";
+       (std = NULL).if {"pas au point\n".print;};
+       std.open;
+//       std.size.print; '\n'.print;
+       
+       fa := FAST_ARRAY(CHARACTER).create_with_capacity (std.size);
+       std.read fa size (std.size);
+       0.to (std.size-1) do {j:INTEGER;
+         fa.item j .print;
+       };
+       '\n'.print;
+
+       std.write s from 0 size (s.count);
+       std.close;
+       //force l'ecriture du cache
+       std1 ?= dir.get_entry "calc.bmp";
+       (std1 = NULL).if {"pas au point\n".print;};
+       std1.open;
+       fa := FAST_ARRAY(CHARACTER).create_with_capacity (std1.size);
+       std1.read fa size (std.size);
+       //reouverture !!
+       std.open;
+       fa := FAST_ARRAY(CHARACTER).create_with_capacity (std.size);
+       std.read fa size (std.size);
+       0.to (std.size-1) do {j:INTEGER;
+         fa.item j .print;
+       };
+       '\n'.print;
+
+     );
+     */
+ */
+
+
+
+
+
+
+
+
+
+

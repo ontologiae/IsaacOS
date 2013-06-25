@@ -1,0 +1,130 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  - name        := LFN_FAT;
+  
+  - category    := MICRO;
+  
+  - bibliography:= "http://www.lisaac.org";
+
+  - author      := 
+  "Benoit Sonntag (benoit.sonntag@lisaac.org), \
+  \Jerome Boutet (pisteur@free.fr)";  
+
+  - comment     := "";
+
+Section Inherit
+  
+  - parent_lfn:LFN := LFN; 
+
+Section Mapping
+
+  + stat:UINTEGER_8;
+  
+  + name1_0:UINTEGER_16;
+  + name1_1:UINTEGER_16;
+  + name1_2:UINTEGER_16;
+  + name1_3:UINTEGER_16;
+  + name1_4:UINTEGER_16;
+    
+  + attr:UINTEGER_8;
+  
+  + reserved:UINTEGER_8;
+  
+  + checksum:UINTEGER_8;
+  
+  + name2_0:UINTEGER_16;
+  + name2_1:UINTEGER_16;
+  + name2_2:UINTEGER_16;
+  + name2_3:UINTEGER_16;
+  + name2_4:UINTEGER_16;
+  + name2_5:UINTEGER_16;
+  
+  + cluster:UINTEGER_16;
+  
+  + name3_0:UINTEGER_16;
+  + name3_1:UINTEGER_16;
+  + name3_2:UINTEGER_16;  
+  
+Section Public
+  
+  - name1:FAST_ARRAY(CHAR_UNICODE) <-
+  ( + result:FAST_ARRAY(CHAR_UNICODE);
+    result := FAST_ARRAY(CHAR_UNICODE).create 5;
+    result.put (name1_0.to_char_unicode) to 0;
+    result.put (name1_1.to_char_unicode) to 1;
+    result.put (name1_2.to_char_unicode) to 2;
+    result.put (name1_3.to_char_unicode) to 3;
+    result.put (name1_4.to_char_unicode) to 4;
+    result
+  );
+  
+  - name2:FAST_ARRAY(CHAR_UNICODE) <-
+  ( + result:FAST_ARRAY(CHAR_UNICODE);
+    result := FAST_ARRAY(CHAR_UNICODE).create 6;
+    result.put (name2_0.to_char_unicode) to 0;
+    result.put (name2_1.to_char_unicode) to 1;
+    result.put (name2_2.to_char_unicode) to 2;
+    result.put (name2_3.to_char_unicode) to 3;
+    result.put (name2_4.to_char_unicode) to 4;
+    result.put (name2_5.to_char_unicode) to 5;
+    result
+  );
+  
+  - name3:FAST_ARRAY(CHAR_UNICODE) <-
+  ( + result:FAST_ARRAY(CHAR_UNICODE);
+    result := FAST_ARRAY(CHAR_UNICODE).create 3;
+    result.put (name3_0.to_char_unicode) to 0;
+    result.put (name3_1.to_char_unicode) to 1;
+    result.put (name3_2.to_char_unicode) to 2;
+    result
+  );
+  
+  - print <-
+  (
+    "\nName : ".print;
+    0.to 5 do { i:INTEGER;
+      name1.item i.print;
+    };
+    0.to 6 do { i:INTEGER;
+      name2.item i.print;
+    };
+    0.to 3 do { i:INTEGER;
+      name3.item i.print;
+    };    
+    "\nStat : ".print;
+    stat.print;
+    print(" ");
+    ((stat & 80h) = 1).if {
+      "Erased".print;
+    };
+    ((stat & 40h) = 1).if {
+      "End Entry".print;
+    };
+    ((stat & 3Fh) = 1).if {
+      "Entry".print;
+    };
+
+    "\nChecksum : ".print;
+    checksum.print;
+
+    "\n---------------\n".print;
+    
+    KEYBOARD.wait_key;
+    KEYBOARD.wait_key;
+  );
+

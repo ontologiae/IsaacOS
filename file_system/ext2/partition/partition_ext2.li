@@ -1,0 +1,127 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := PARTITION_EXT2;
+  
+  
+  - bibliography:= "http://www.lisaac.org";
+  - author      := "Simon Fuhlhaber / Jerome Hilbert";
+  - comment     := "Partition Hard disk.";
+  
+Section Inherit  
+  
+  + parent_directory_ext2:Expanded DIRECTORY_EXT2;
+  + parent_partition:Expanded PARTITION;
+  
+Section Private
+
+  - sector:UINTEGER_32<- deferred;
+  // cluster to sector.
+  
+  + superblock:SUPERBLOCK;
+  
+  + block:UINTEGER_32;
+  + array_block1:UINTEGER_32;
+  + array_block2:UINTEGER_32;
+  + array_block3:UINTEGER_32;
+  + block_type:UINTEGER_32;
+  - nb_block_13:UINTEGER_32<- block_size/4;
+  - nb_block_14:UINTEGER_32<- nb_block_13*nb_block_13;
+  - nb_block_15:UINTEGER_32<- nb_block_14*nb_block_13;
+  
+  + step:UINTEGER_32 <- sector_per_block;
+  
+  + get_block_from idx:INTEGER :UINTEGER_32 <-
+  (
+    ((buffer.item idx).to_uinteger_32)
+    +((buffer.item (idx+1)).to_uinteger_32<<8)
+    +((buffer.item (idx+2)).to_uinteger_32<<16)
+    +((buffer.item (idx+3)).to_uinteger_32<<24)
+  );
+  
+Section STD_FILE_EXT2,DIRECTORY_EXT2,ENTRY_EXT2
+  
+  - set_block_type b:UINTEGER_32 <-
+  (
+    (b<=12).if
+    {
+      block_type:=0;
+    }.elseif{b<=(12+nb_block_13)} then
+    {
+      block_type:=1;
+      array_block1:=b-12;
+    }.elseif{b<=(12+nb_block_13+nb_block_14)} then
+    {
+      block_type:=2;
+      array_block1:=(b-12-nb_block_13-1)/nb_block_13;
+      array_block2:=(b-12-nb_block_13-1)%nb_block_13;
+    }.elseif{b<=(12+nb_block_13+nb_block_14+nb_block_15)} then
+    {
+      block_type:=3;
+      array_block1:=(b-12-nb_block_13-nb_block_14-1)/nb_block_14;
+      array_block2:=((b-12-nb_block_13-nb_block_14-1)%nb_block_14)/nb_block_13;
+      array_block3:=(b-12-nb_block_13-nb_block_14-1)%nb_block_13;
+    };
+  );
+  - set_block b:UINTEGER_32 <-
+  (
+    + idx:INTEGER;
+    (block_type=0).if
+    {
+      block:=b;
+    }.elseif{block_type=1} then 
+    {
+      block:=b;
+      read;
+      idx:=(array_block1)*4;
+      block:=get_block_from idx;
+    }.elseif {block_type=2} then {
+      block:=b;
+      read;
+      idx:=array_block1*4;
+      block:=get_block_from idx;
+      read;
+      idx:=array_block2*4;
+      block:=get_block_from idx;
+    }.elseif {block_type=3} then {
+      block:=b;
+      read;
+      idx:=array_block1*4;
+      block:=get_block_from idx;
+      read;
+      idx:=array_block2*4;
+      block:=get_block_from idx;
+      read;
+      idx:=array_block3*4;
+      block:=get_block_from idx;
+    }; 
+  );
+  
+  
+  
+Section Public
+  
+  + first_block_sector:UINTEGER_32;
+  
+  - block_size:UINTEGER_32<- superblock.get_block_size;
+
+  
+  - sector_per_block:UINTEGER_32 <- block_size/DRIVE.sector_size;
+  
+  - nb_inodes_per_group:UINTEGER_32<- superblock.get_inodes_per_group;
+  
+

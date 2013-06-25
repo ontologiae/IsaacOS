@@ -1,0 +1,104 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+
+Section Header
+  
+  + name        := FAT16;
+  
+  - bibliography:= "http://www.lisaac.org";
+  
+  - author      := "Benoit Sonntag (benoit.sonntag@lisaac.org)";
+  
+  - comment     := "File system type: FAT 16";
+  
+Section Inherit
+  
+  + parent_fat:Expanded FAT;
+  
+Section Private
+  
+  - null_value:UINTEGER_32:= 0FFF8h;
+    
+  - sector:UINTEGER_32<-
+  ( + result:UINTEGER_32;
+    
+    (cluster >= root_block).if {
+      result := root_offset + (cluster - root_block) * step;
+    } else {
+      result := block_offset + cluster * step;
+    };
+    result
+  );  
+  
+Section Public
+  
+  - next_cluster:BOOLEAN <-  
+  ( + fat16:NATIVE_ARRAY(UINTEGER_16);  
+    + sec_fat,n:UINTEGER_32;
+    // Virtual Root cluster :
+    (cluster >= root_block).if {
+      cluster := cluster + 1;
+    } else {
+      sec_fat := (fat_sector + (cluster >> 8)) & 0FFFFFFF8h;      
+      n := (((fat_sector << 9) + (cluster << 1)) & 4095) >> 1;
+      (sec_fat != fat_cache_index).if {
+	drive.set_cursor sec_fat;
+	fat_cache.clear;
+	drive.read fat_cache size 8;	
+	fat_cache_index := sec_fat;
+      };      
+      fat16 := CONVERT(NATIVE_ARRAY(UINTEGER_8),NATIVE_ARRAY(UINTEGER_16)).on (fat_cache.to_native_array);
+      cluster := fat16.item n;
+    };    
+    cluster != null_value
+  );
+  
+  //
+  // Creation.
+  //
+  
+  - make drv:DRIVE begin fsector:UINTEGER_32<-
+  ( + boot:BOOT;    
+    
+    drive := drv;
+    first_sector := fsector;
+    buffer := FAST_ARRAY(UINTEGER_8).create_with_capacity 512;
+    
+    drive.set_cursor first_sector;    
+    drive.read buffer size 1;
+    boot := CONVERT(NATIVE_ARRAY(UINTEGER_8),BOOT).on (buffer.to_native_array);
+    
+    // Compute Size Cluster :
+    step := boot.sectors_per_cluster;
+    
+    // Compute Logical Sector FAT :
+    fat_sector := first_sector + boot.sectors_reserved;
+    fat_number := boot.nb_fat;
+    fat_size   := boot.sectors_per_fat;
+    fat_cache  := FAST_ARRAY(UINTEGER_8).create_with_capacity 4096;
+    
+    // Compute Logical Sector Root :
+    root_offset:= fat_sector + fat_size * fat_number; 
+    root_size  := boot.nb_root_entries >> 4;
+    root_block := 65536;
+
+    // Compute Sector First Cluster : (-2 Clusters)   
+    block_offset := root_offset + root_size - (step << 1);    
+    
+    // Buffer for one cluster.
+    buffer.set_capacity (step_byte.to_integer);
+ );
+

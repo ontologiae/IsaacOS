@@ -1,0 +1,139 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name    := CONTROLER;
+  
+  
+  - bibliography:= "http://www.lisaac.org";
+  - author      := "Sonntag Benoit (benoit.sonntag@lisaac.org)";
+  - comment     := "Controler.";
+
+  - date    := "2003/05";
+  
+Section Inherit
+  
+  - parent_object:OBJECT := OBJECT;
+  
+    
+Section Public
+  
+  + port_base:UINTEGER_16;
+
+  //
+  // Creation.
+  //
+  
+  - create port_b:UINTEGER_16 :SELF <-
+  ( + result:SELF;
+    
+    result := Self.clone;
+    result.make port_b;
+    result
+  );
+  
+  - make port_b:UINTEGER_16 <-
+  (
+    port_base := port_b;    
+  );
+  
+  //
+  // Deferred.
+  //
+  
+  - n_drive:UINTEGER_8     <- deferred;
+  
+  - nbr_sector:UINTEGER_32  <- deferred;
+  
+  - nbr_cylinder:UINTEGER_32<- deferred;
+  
+  - nbr_head:UINTEGER_32    <- deferred;  
+
+  - step:UINTEGER_32        <- deferred;
+    
+  - cursor:UINTEGER_32      <- deferred;
+  
+  - is_removable:BOOLEAN  <- deferred;
+  
+//  - is_read_only:BOOLEAN  <- deferred;
+  
+  //
+  // Services
+  //
+  
+  - size:UINTEGER_32  <- 
+  // Size drive (sector)
+  (
+    nbr_sector * nbr_cylinder * nbr_head
+  );
+  
+  - set_cursor new_cursor:UINTEGER_32<-
+  (
+    ? { new_cursor < size};
+    cursor := new_cursor;
+  );
+  
+  //
+  // Read status.
+  //
+  
+  - read_status:BOOLEAN <- 
+  (
+    deferred;
+    FALSE
+  );
+    
+  //
+  // Read/Write
+  //
+    
+Section CONTROLER
+  
+  - physical_read dest:FAST_ARRAY(UINTEGER_8) size s:INTEGER :UINTEGER_32<- 
+  (
+    ? {dest!=NULL};
+    deferred;
+    0
+  );
+  
+  - physical_write src:FAST_ARRAY(UINTEGER_8) size s:INTEGER :UINTEGER_32<-
+  (
+  //  ( ? {! is_read_only};
+    ? {src != NULL};
+    deferred;
+    0
+  );
+    
+  - set_cursor_and_size sz:INTEGER <-
+  // Compute and physical position
+  ( + h,s:UINTEGER_8;
+    + t:UINTEGER_16;
+    + remain:UINTEGER_32;
+    + head_x_sec:UINTEGER_32;
+    
+    head_x_sec := nbr_head * nbr_sector;
+    t := (cursor / head_x_sec).to_uinteger_16;
+    remain := cursor % head_x_sec;
+    h := (remain / nbr_sector).to_uinteger_8;
+    s := (remain % nbr_sector).to_uinteger_8 + 1;
+    set_head h track t sector s size sz;
+  );
+
+  - set_head h:UINTEGER_8 track t:UINTEGER_16 sector s:UINTEGER_8 size sz:INTEGER <- 
+  (
+    deferred;
+  );  
+  

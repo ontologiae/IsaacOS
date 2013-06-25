@@ -1,0 +1,135 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name      := VIRTUAL_MEMORY;
+
+  - copyright := "2003-2008 Sonntag Benoit";
+
+  - author    := "Sonntag Benoit (benoit.sonntag@lisaac.org)";
+  - comment   := "Virtual memory manager";
+
+Section Inherit
+
+  + parent_memory:/*Expanded*/ MEMORY; //Memory est Strict !!!! // BUG COMPIL !!! Contrat is_expanded && is_strict --> MEMORY is strict
+
+Section MEMORY
+  
+  - page:NATIVE_ARRAY(POINTER) <- CONVERT(POINTER,NATIVE_ARRAY(POINTER)).on get_adress_page;
+  
+  - physical_capacity:UINTEGER_64;
+  
+  - set_adress_page adr:POINTER <-
+  (
+    `asm("movl %0,%%eax\n\
+         movl %%eax,%%cr3": :"m"(@adr) :"eax")`;
+  );
+  
+  - get_adress_page:POINTER <-
+  ( + result:POINTER;
+    
+    `asm("movl %%cr3,%%eax\n\
+         movl %%eax,%0":"=m"(@result): :"eax")`;
+    result
+  );
+  
+  
+  - search_capacity <-
+  ( + addr:UINTEGER_32;
+    + idx:INTEGER;
+    
+    parent_memory.search_capacity;
+    physical_capacity := capacity_max;
+    capacity_max := 4.to_uinteger_64.gb;
+    set_adress_page begin_memory;
+    // set page directory
+    {(begin_memory /* +# 100.mb */) ># (addr & 0FFC0_0000h)}.while_do {
+      page.put ((begin_memory + (idx+1)*4.kb)| 3 ) to idx;
+      idx := idx + 1;
+      addr := addr + 4.mb;
+    };
+    { idx & 1023 != 0 }.while_do {
+      page.put 0 to idx;
+      idx := idx + 1;
+    };
+    addr := 0;
+    // set page table
+    { (begin_memory /* +# 100.mb */) ># (addr & 0FFFF_F000h)}.while_do {
+      page.put (addr | 3) to idx;
+      idx := idx + 1;
+      addr := addr + 4.kb;
+    }; 
+    { idx & 1023 != 0 }.while_do {
+      page.put 0 to idx;
+      idx := idx + 1;
+    };
+    begin_memory := begin_memory + 4.mb;
+    set_pagination;
+    SYSTEM.new_interrupt interrupt_0eh to 0Eh;
+    "Pagination ok\n".print;
+  //  print;
+    KEYBOARD.wait_key;
+  );
+ 
+
+
+  - print <-
+  ( + ind:INTEGER;
+    "VIRTUAL MEMORY\n".print;
+    "address page : ".print;get_adress_page.print_hex;
+    "---dir---\n".print;
+    {page.item ind != NULL }.while_do {
+      page.item ind.print_hex;'\n'.print;
+      ind := ind +1;
+    };
+    '\n'.print;
+    ind := 1024;
+    "---table---\n".print;
+    {page.item ind != NULL }.while_do {
+      page.item ind.print_hex;'\n'.print;
+      ind := ind +1;
+    };
+    '\n'.print;
+    
+  );
+
+  Section Public
+  - set_pagination <-
+  // Activation of pagination.
+  (
+    `asm("movl %%cr0,%%eax \n\
+         orl $0x80000000,%%eax\n\
+         movl %%eax,%%cr0": : :"eax")`;
+  );  
+
+
+Section Interrupt
+    
+  - interrupt_0eh <-
+  ( + page_need:POINTER;        
+    
+    "Defaut de page !\n".print;
+    
+    `asm("movl %%cr2,%%eax\n\
+    movl %%eax,%0":"=m"(@page_need): :"eax")`;
+    
+    "fait pètè la page : ".print;
+    page_need.print_hex;
+    '\n'.print;
+    
+    {
+    }.loop_infinitely;
+  );

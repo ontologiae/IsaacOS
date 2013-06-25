@@ -1,0 +1,102 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := DIRECTORY_EXT2;
+  
+  - bibliography:= "http://www.lisaac.org";
+
+  - author      := "Simon Fuhlhaber / Jerome Hilbert";  
+
+  - comment     := "Directory for EXT2";
+  
+Section Inherit
+  
+  + parent_entry_ext2:Expanded ENTRY_EXT2;
+  + parent_directory:Expanded DIRECTORY;
+  
+Section Public
+  
+  - is_open:BOOLEAN <- (list != NULL);
+  
+  - open:BOOLEAN <-
+  ( + new_entry:ENTRY_EXT2;
+    + current_block:UINTEGER_32;
+    + inode_no:UINTEGER_32;
+    + offset:UINTEGER_32;
+    + partition:PARTITION_EXT2;
+    + name_lg,file_type:UINTEGER_8;
+    + record_lg:UINTEGER_16;
+          
+    (is_open).if_false {      
+  //    make_inode;
+      list := LINKED_LIST(ENTRY).create;
+      partition ?= FILE_SYSTEM.get_partition Self;
+      current_block:=0;
+      offset:=partition.block_size+1;
+      {
+        (offset>partition.block_size).if{
+          offset:=0;
+          current_block:=current_block+1;
+          partition.set_block_type current_block;
+          partition.set_block (inode.get_block current_block);
+          partition.read;
+        };
+        inode_no:=((partition.buffer.item offset).to_uinteger_32)+
+        ((partition.buffer.item (offset+1)).to_uinteger_32<<8)+
+        ((partition.buffer.item (offset+2)).to_uinteger_32<<16)+
+        ((partition.buffer.item (offset+3)).to_uinteger_32<<24);
+        offset:=offset+4;
+        record_lg:=(
+          partition.buffer.item offset.to_uinteger_16 +
+          partition.buffer.item (offset+1).to_uinteger_16<<8
+        );
+        offset:=offset+2;
+        name_lg:=partition.buffer.item offset;
+        file_type:=partition.buffer.item (offset+1);
+        offset:=offset+2;
+        string_tmp.copy path;
+        string_tmp.add_last '/';
+        offset.to (offset+name_lg-1) do { i:UINTEGER_32;
+          string_tmp.add_last (partition.buffer.item i.to_character);
+        };        
+        offset:=offset+record_lg-8;
+        (( ! string_tmp.has_suffix "/." ) && { ! string_tmp.has_suffix "/.." }).if {          
+          (file_type.in_range 1 to 2).if {
+            (file_type =2).if {
+              new_entry := DIRECTORY_EXT2.clone;
+            } else {
+              new_entry := STD_FILE_EXT2.clone;
+            };
+            new_entry.set_no_inode inode_no;       
+            new_entry.set_path string_tmp;
+            new_entry.set_type_code file_type;            
+            list.add_last new_entry;
+            alias.put new_entry to (new_entry.path);            
+          };
+        };      
+      }.do_until{ record_lg > 266 };
+      list.lower.to (list.upper) do{ j:INTEGER;
+        new_entry ?= item j;
+        new_entry.make_inode;
+      };      
+    };
+    TRUE
+  );
+  
+
+  
+  

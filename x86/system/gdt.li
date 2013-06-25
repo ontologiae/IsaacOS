@@ -1,0 +1,92 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := GDT;
+  
+  
+  - bibliography:= "http://www.lisaac.org";
+  - author      := "Boutet Jerome (boutet@loria.fr),Sonntag Benoit (bsonntag@loria.fr);P-A Voye";
+  - comment     := "Global Descriptor Table.";
+    
+Section Private
+  
+  - table:NATIVE_ARRAY_VOLATILE(DESC_SEG) := NATIVE_ARRAY_VOLATILE(DESC_SEG).create 4;
+    
+  - new_descriptor:UINTEGER_16 <-
+  ( + free_desc:UINTEGER_16;
+
+    SYSTEM.interrupt_off;
+    free_desc:=table.item 0.link; 
+    
+    "Descriptor : #".print;
+    free_desc.print;
+    '\n'.print;
+
+    (free_desc=0).if { 
+      // Il faut agrandir la table ou donner une erreur...
+      "Agrandir la GDT !\n".print;
+      SYSTEM.exit 1;
+    };
+    table.item 0.set_link (table.item free_desc.link);
+    SYSTEM.interrupt_on;
+    
+    free_desc
+  );
+  
+Section Public
+
+  - remove num:UINTEGER_16 <-
+  ( + desc:DESC_SEG;
+    + idx:UINTEGER_16;
+    ? {num.in_range 8h to 800h};
+    ? {table.item (num>>3).is_present};
+    
+    idx:=num>>3;
+    desc:=table.item idx;
+    desc.free;
+    
+    // Linked list.
+    desc.set_link (table.item 0.link);
+    table.item 0.set_link idx;
+  );
+
+  - add addr:UINTEGER_32 limit lim:UINTEGER_32 type t:UINTEGER_16 :UINTEGER_16 <-
+  ( + desc:DESC_SEG;
+    + result:UINTEGER_16;
+    
+    result:=new_descriptor;
+    desc:=table.item result;
+    desc.create addr limit lim type t;
+    
+    result<<3
+  );
+
+
+  - report_gdt <-
+  (
+    // On itère sur la table, et on décrit le desc_seg
+  );
+
+
+   - active_gdt <-
+   ( + local_table : NATIVE_ARRAY_VOLATILE(DESC_SEG);
+     local_table := table;
+     `asm("lgdtl (@local_table)")`;
+   );
+
+
+

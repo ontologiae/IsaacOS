@@ -1,0 +1,123 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := STD_FILE_FAT;
+  
+  - bibliography:= "http://www.lisaac.org";
+
+  - author      := "Benoit Sonntag (benoit.sonntag@lisaac.org)";
+
+  - comment     := "File for ISAAC";
+
+Section Inherit
+  
+  + parent_entry:Expanded ENTRY_FAT;
+  + parent_abstract_file:Expanded STD_FILE;
+  
+Section Public
+    
+  //
+  // Physical implementation.
+  //
+  
+  - is_open:BOOLEAN <- TRUE;
+  
+  + cursor:UINTEGER_32;
+  
+  - set_cursor n:UINTEGER_32 <-
+  (
+    cursor := n;
+  );
+    
+  - open:BOOLEAN <-
+  (
+    // simplicity at work :) BSJH :)    
+    TRUE
+  );
+  
+  - open_read_only:BOOLEAN <- open;
+  
+  - close <-
+  (
+    cursor := 0;
+  );
+  
+Section STD_FILE      
+  
+  - physical_read buf:NATIVE_ARRAY(UINTEGER_8) size s:INTEGER :INTEGER <-
+  // return size read or 0 if end of input (-1 on error => exception ?)
+  ( + n:UINTEGER_32;
+    + size_cluster:UINTEGER_32;    
+    + partition:PARTITION_FAT;    
+    + lower,upper,idx,lower2:UINTEGER_32;
+    
+    
+    ? {s > 0};
+    ? {buf != NULL};
+    partition ?= FILE_SYSTEM.get_partition Self;
+            
+    // Set position good cluster.
+    size_cluster := partition.step_byte;
+    n := cursor / size_cluster;
+    partition.set_cluster position;
+    1.to n do { i:INTEGER;
+      partition.next_cluster;
+    };    
+        
+    // Read.
+    n := s;
+    lower := cursor % size_cluster;
+    {n = 0}.until_do {
+      // Read cluster.      
+      partition.read;	        
+      partition.next_cluster;
+      lower2:=lower;
+      // Compute size for copy.	
+      ((lower + n) > size_cluster).if {
+        upper := size_cluster - 1;	  
+        n := n - (size_cluster - lower);	
+        lower := 0;
+      } else {
+        upper := lower + n - 1;	  
+        n := 0;
+      };	      
+      
+      // Copy in buf.      
+      lower2.to upper do { i:UINTEGER_32;
+        buf.put (partition.buffer.item i) to idx;
+        idx := idx + 1;
+      };
+      /*
+      (partition.next_cluster).if_false {
+        n := 0;
+      };
+      */
+    };
+    cursor := cursor + idx;    
+    idx
+  );
+
+  - physical_write buf:NATIVE_ARRAY(UINTEGER_8) size s:INTEGER :INTEGER <-
+  // return size write or 0 if end of input (-1 on error => exception ?)
+  ( 
+    ? {is_open};
+    not_yet_implemented;
+    0
+  );
+  
+  
+  
