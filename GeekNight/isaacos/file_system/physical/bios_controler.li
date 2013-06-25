@@ -1,0 +1,154 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name    := BIOS_CONTROLER;
+  
+  
+  - bibliography:= "http://www.lisaac.org";
+  - author      := "Sonntag Benoit (benoit.sonntag@lisaac.org), Hilbert Jerome";
+  - comment     := "BIOS Controler.";
+  
+  - date    := "2008";
+  
+Section Inherit
+  
+  + parent_controler:Expanded CONTROLER;
+  
+Section Public
+   
+  //
+  // Read Drive status.
+  //
+  
+  - read_status:BOOLEAN <-
+  ( + buf_32:NATIVE_ARRAY(UINTEGER_32);
+    + buf_16:NATIVE_ARRAY(UINTEGER_16);
+    + result:BOOLEAN;
+    
+    buf_16 := CONVERT(NATIVE_ARRAY(UINTEGER_8),NATIVE_ARRAY(UINTEGER_16)).on (BIOS.get_buffer);
+    buf_32 := CONVERT(NATIVE_ARRAY(UINTEGER_8),NATIVE_ARRAY(UINTEGER_32)).on (BIOS.get_buffer);
+    REGISTER.set_ah 48h;
+    REGISTER.set_dl n_drive;
+      
+    REGISTER.set_ds (BIOS.segment_buffer);
+    REGISTER.set_si (BIOS.offset_buffer);    
+    BIOS.clear_buffer;
+    buf_16.put 1Eh to 0;    
+      
+    BIOS.call_interrupt 13h;        
+    (! REGISTER.carry).if {      
+      nbr_cylinder := buf_32.item 1;
+      nbr_head     := buf_32.item 2;
+      nbr_sector   := buf_32.item 3; 
+      result := TRUE;
+    };
+    result
+  );
+  
+Section CONTROLER
+  
+  //
+  // Read / Write.
+  //  
+  
+  - physical_read dest:FAST_ARRAY(UINTEGER_8) size s:INTEGER :UINTEGER_32<-
+  ( + nb_sec:UINTEGER_32;
+    + buf_32:NATIVE_ARRAY(UINTEGER_32);
+    + buf_16:NATIVE_ARRAY(UINTEGER_16);
+    + buf_8:NATIVE_ARRAY(UINTEGER_8);
+    
+    ? {dest!=NULL};
+    ? { s > 0 };
+    buf_8  := BIOS.get_buffer;
+    nb_sec := s;
+        
+    {                    
+      //version nouvelles interruptions:
+      buf_16 := CONVERT(NATIVE_ARRAY(UINTEGER_8),NATIVE_ARRAY(UINTEGER_16)).on buf_8;
+      buf_32 := CONVERT(NATIVE_ARRAY(UINTEGER_8),NATIVE_ARRAY(UINTEGER_32)).on buf_8;
+      REGISTER.set_ah 42h;
+      REGISTER.set_dl n_drive;
+      REGISTER.set_ds (BIOS.segment_buffer);
+      REGISTER.set_si (BIOS.offset_buffer);
+      BIOS.clear_buffer;
+      buf_16.put 10h to 0;    
+      buf_16.put 1 to 1;
+      buf_16.put (BIOS.offset_buffer+512) to 2;
+      buf_16.put (BIOS.segment_buffer) to 3;
+      buf_32.put cursor to 2;      
+      buf_32.put 0 to 3;      
+      BIOS.call_interrupt 13h;
+      0.to 511 do { j:INTEGER;
+        dest.add_last (buf_8.item (512+j));
+      };
+      cursor := cursor + 1;
+      nb_sec := nb_sec - 1;      
+    }.do_until {nb_sec = 0};
+    s
+  );
+  
+  - physical_write src:FAST_ARRAY(UINTEGER_8) size s:INTEGER :UINTEGER_32<-
+  ( + nb_sec:UINTEGER_32;
+    + buf_32:NATIVE_ARRAY(UINTEGER_32);
+    + buf_16:NATIVE_ARRAY(UINTEGER_16);
+    + buf_8:NATIVE_ARRAY(UINTEGER_8);
+    
+    -? {src != NULL};
+    ? { s > 0 };
+    
+    ? {s = 1}; // JHJH: see CACHE_SECTOR
+    
+    buf_8  := BIOS.get_buffer;
+    nb_sec := s;
+//    {          
+      buf_16 := CONVERT(NATIVE_ARRAY(UINTEGER_8),NATIVE_ARRAY(UINTEGER_16)).on buf_8;
+      buf_32 := CONVERT(NATIVE_ARRAY(UINTEGER_8),NATIVE_ARRAY(UINTEGER_32)).on buf_8;
+      REGISTER.set_ah 43h;
+      REGISTER.set_al 0;
+      REGISTER.set_dl n_drive;
+      
+      REGISTER.set_ds (BIOS.segment_buffer);
+      REGISTER.set_si (BIOS.offset_buffer);
+      buf_16.put 10h to 0;    
+      buf_16.put 1 to 1;
+      buf_16.put (BIOS.offset_buffer+512) to 2;
+      buf_16.put (BIOS.segment_buffer) to 3;
+      buf_32.put cursor to 2;      
+      buf_32.put 0 to 3;      
+      0.to 511 do { j:INTEGER;        
+        buf_8.put (src.item j) to (512+j);
+      };
+      BIOS.call_interrupt 13h;
+
+      cursor := cursor + 1;
+//      nb_sec := nb_sec - 1;      
+//    }.do_until {nb_sec = 0};
+    s
+  );
+
+  
+  - set_head h:UINTEGER_8 track t:UINTEGER_16 sector s:UINTEGER_8 size sz:INTEGER <-
+  // Select a drive / head / track / sector
+  ( ? {sz < 256};
+    ? {nbr_head >= h};
+    ? {nbr_cylinder >= t}; 
+    ? {nbr_sector >= s};
+    // Nothing for BIOS    
+  );
+  
+  
+  

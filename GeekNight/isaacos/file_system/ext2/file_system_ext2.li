@@ -1,0 +1,161 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+
+Section Header
+  
+  + name        :=FILE_SYSTEM_EXT2;
+  
+  - bibliography:="http://www.lisaac.org";
+
+  - author      := "Simon Fuhlhaber / Jerome Hilbert";  
+
+  - comment     :="File System manager for ISAAC - X86.";
+  
+Section Inherit  
+  
+  - parent_directory:DIRECTORY_EXT2 :=DIRECTORY_EXT2;
+  
+Section Public  
+  
+  - floppy:DIRECTORY <-
+  ( + part:PARTITION;
+    + ctrl:CONTROLER;
+    + drv:DRIVE;
+    
+    (partition_list.first = NULL).if {
+      // Floppy Controler.
+      ctrl := FLOPPY_CONTROLER.create 3F0h;
+      drv  := DRIVE.create ctrl drive 00h;
+      // Init fat12
+      part := FAT12.create drv begin 0;
+      partition_list.put part to 0;
+} else {
+      part := partition_list.first;
+};
+    part.root
+  );
+  
+  - lower_part:INTEGER := 0;
+  - upper_part:INTEGER <- partition_list.upper;
+  - count_part:INTEGER <- upper_part + 1;
+  
+  - item_part idx:INTEGER :DIRECTORY_EXT2 <-
+  ( + result:DIRECTORY_EXT2;
+    + part:PARTITION_EXT2;
+        
+    ? {idx.in_range lower_part to upper_part};
+    (idx = 0).if {
+    //  result := floppy; 
+    } else {
+      part   := partition_list.item idx;            
+      result := part.root;
+    };
+    result
+  );
+  
+  
+Section FILE_SYSTEM, STD_FILE, DIRECTORY, ENTRY
+  
+  + partition_list:FAST_ARRAY(PARTITION_EXT2);
+  
+  //
+  // Partition Info.
+  //
+  
+  - buffer:FAST_ARRAY(UINTEGER_8);  
+
+  - read_partition drv:DRIVE begin logical_sector:UINTEGER_32 <-
+  ( + mbr:MBR;
+    + new_part:PARTITION_EXT2;
+    + first:UINTEGER_32;
+        
+    drv.set_cursor logical_sector;
+    buffer.clear;
+
+    drv.read buffer size 1;
+            
+    // Load mbr.    
+    1BEh.to 1EEh by 16 do { n:INTEGER;
+      
+      mbr:=CONVERT(NATIVE_ARRAY(UINTEGER_8),MBR).on (buffer.to_native_array + n);
+      
+      first := mbr.mbr_first_sector + logical_sector;
+      ((mbr.type=05h) || {mbr.type=0Fh}).if {      
+  // Extended Partition.
+  read_partition drv begin first; 
+}.elseif {mbr.is_ext2} then {
+    "\t\tEXT2 detected.\n".print;
+    new_part := EXT2.create drv begin first;
+    partition_list.add_last new_part;   
+} else {
+    "\t\tUnknown partition detected (".print;
+    mbr.type.to_hexadecimal.print;
+    "h)\n".print;
+};
+};
+  );  
+  
+Section STARTUP  
+  
+  //
+  // Init
+  //
+  
+  - make <-
+  ( + ctrl:CONTROLER;
+    + drv:DRIVE;
+    
+    partition_list := FAST_ARRAY(PARTITION_EXT2).create_with_capacity 3;
+    partition_list.add_last NULL; // Floppy.
+    // Controler BIOS.
+    ctrl := BIOS_CONTROLER.create 0;    
+    drv  := DRIVE.create ctrl drive 81h;         
+    // Partition.    
+    "Mount IDE 1\n".print;
+    buffer := FAST_ARRAY(UINTEGER_8).create_with_capacity 512;
+    read_partition drv begin 0;
+    parent_directory:=item_part 1;
+  );
+
+ - supertest <-
+ (
+    + partition:PARTITION_EXT2;
+    + buf:FAST_ARRAY(UINTEGER_8);
+    + inode:INODE;
+    + group_desc:GROUP_DESCRIPTOR;
+    partition:=partition_list.item 1;
+    
+    buf:=FAST_ARRAY(UINTEGER_8).create_with_capacity (GROUP_DESCRIPTOR.size);
+    partition.set_block 2;
+    partition.read;
+    
+    (GROUP_DESCRIPTOR.size).to (2*GROUP_DESCRIPTOR.size)do{i:INTEGER;
+      buf.add_last (partition.buffer.item i);
+    };
+    group_desc:=CONVERT(NATIVE_ARRAY(UINTEGER_8),GROUP_DESCRIPTOR).on (buf.to_native_array);
+    group_desc.print;
+    partition.set_block 8259;
+    partition.read;
+    "5\n".print;
+    buf:=FAST_ARRAY(UINTEGER_8).create_with_capacity (INODE.size);
+    0.to (INODE.size)do{i:INTEGER;
+      buf.add_last (partition.buffer.item i);
+    };
+    inode:=CONVERT(NATIVE_ARRAY(UINTEGER_8),INODE).on (buf.to_native_array);
+    inode.print;
+    
+ );
+

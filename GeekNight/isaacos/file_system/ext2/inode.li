@@ -1,0 +1,169 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := INODE;
+  
+  - bibliography:= "http://www.lisaac.org";
+
+  - author      := "Simon Fuhlhaber / Jerome Hilbert";  
+
+  - comment     := "Inode for Ext2 file";
+  
+
+Section Mapping
+
+  + i_mode:UINTEGER_16;
+  + i_uid:UINTEGER_16;
+  + i_size:UINTEGER_32;
+  + i_atime:UINTEGER_32;
+  + i_ctime:UINTEGER_32;
+  + i_mtime:UINTEGER_32;
+  + i_dtime:UINTEGER_32;
+  + i_gid:UINTEGER_16;
+  + i_links_count:UINTEGER_16;
+  + i_blocks:UINTEGER_32;
+  + i_flags:UINTEGER_32;
+  + i_osd1:UINTEGER_32;
+  + i_block1:UINTEGER_32;
+  + i_block2:UINTEGER_32;
+  + i_block3:UINTEGER_32;
+  + i_block4:UINTEGER_32;
+  + i_block5:UINTEGER_32;
+  + i_block6:UINTEGER_32;
+  + i_block7:UINTEGER_32;
+  + i_block8:UINTEGER_32;
+  + i_block9:UINTEGER_32;
+  + i_blocka:UINTEGER_32;
+  + i_blockb:UINTEGER_32;
+  + i_blockc:UINTEGER_32;
+  + i_blockd:UINTEGER_32;
+  + i_blocke:UINTEGER_32;
+  + i_blockf:UINTEGER_32;
+  + i_generation:UINTEGER_32;
+  + i_file_acl:UINTEGER_32;
+  + i_dir_acl:UINTEGER_32;
+  + i_faddr:UINTEGER_32;
+  + i_osd20:UINTEGER_64;
+  + i_osd21:UINTEGER_32;
+
+Section Public
+
+  - size:UINTEGER_32 := 128;
+  
+  - block_size:UINTEGER_32 <- SUPERBLOCK.get_block_size;
+  
+  - get_block index:UINTEGER_32 :UINTEGER_32<-
+  ( + result:UINTEGER_32;
+    + block:NATIVE_ARRAY(UINTEGER_32);
+    
+    (index < 13).if {
+      block := CONVERT(INODE,NATIVE_ARRAY(UINTEGER_32)).on Self;
+      result := block.item (index + 9);
+    }.elseif {index<=(12+block_size/4)} then {
+      result := i_blockd;
+    }.elseif {index<=(12+(block_size*block_size)/4)} then {
+      result := i_blocke;
+    }.elseif {index<=(12+(block_size*block_size*block_size)/4)} then {
+      result := i_blockf;
+    };
+    result
+  );
+  
+  //
+  //  Getteurs de la section Mapping
+  //
+  
+  - get_mode :UINTEGER_16 <- i_mode;
+  - get_uid :UINTEGER_16 <- i_uid;
+  - get_size :UINTEGER_32 <- i_size;
+  - get_atime :UINTEGER_32 <- i_atime;
+  - get_ctime :UINTEGER_32 <- i_ctime;
+  - get_mtime :UINTEGER_32 <- i_mtime;
+  
+    
+  //
+  //  Setteur de la section Mapping
+  //
+    
+  - print <-
+  (
+    
+    "i_mode: ".print;
+    i_mode.print;"\n".print;
+    "i_uid: ".print;
+    i_uid.print;"\n".print;
+    "i_size: ".print;
+    i_size.print;"\n".print;
+    "i_atime: ".print;
+    i_atime.print;"\n".print;
+    "i_ctime: ".print;
+    i_ctime.print;"\n".print;
+    "i_mtime: ".print;
+    i_mtime.print;"\n".print;
+    "i_dtime: ".print;
+    i_dtime.print;"\n".print;
+    "i_gid: ".print;
+    i_gid.print;"\n".print;
+    "i_links_count: ".print;
+    i_links_count.print;"\n".print;
+    "i_blocks: ".print;
+    i_blocks.print;"\n".print;
+    "i_flags: ".print;
+    i_flags.print;"\n".print;
+    "i_osd1: ".print;
+    i_osd1.print;"\n".print;
+    KEYBOARD.wait_key;
+    "i_block1: ".print;
+    i_block1.print;"\n".print;
+    "i_block2: ".print;
+    i_block2.print;"\n".print;
+    "i_block3: ".print;
+    i_block3.print;"\n".print;
+    "i_block4: ".print;
+    i_block4.print;"\n".print;
+    "i_block5: ".print;
+    i_block5.print;"\n".print;
+    "i_block6: ".print;
+    i_block6.print;"\n".print;
+    "i_block7: ".print;
+    i_block7.print;"\n".print;
+    "i_block8: ".print;
+    i_block8.print;"\n".print;
+    "i_block9: ".print;
+    i_block9.print;"\n".print;
+    "i_blocka: ".print;
+    i_blocka.print;"\n".print;
+    "i_blockb: ".print;
+    i_blockb.print;"\n".print;
+    "i_blockc: ".print;
+    i_blockc.print;"\n".print;
+    "i_blockd: ".print;
+    i_blockd.print;"\n".print;
+    "i_blocke: ".print;
+    i_blocke.print;"\n".print;
+    "i_blockf: ".print;
+    i_blockf.print;"\n".print;
+    KEYBOARD.wait_key;
+    "i_generation: ".print;
+    i_generation.print;"\n".print;
+    "i_file_acl: ".print;
+    i_file_acl.print;"\n".print;
+    "i_dir_acl: ".print;
+    i_dir_acl.print;"\n".print;
+    "i_faddr: ".print;
+    i_faddr.print;"\n".print;
+  );

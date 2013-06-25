@@ -1,0 +1,303 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := ENTRY_EXT2;
+  
+  - bibliography:= "http://www.lisaac.org";
+
+  - author      := "Benoit Sonntag (benoit.sonntag@lisaac.org), Jerome Hilbert";  
+
+  - comment     := "Entry ext2";
+    
+Section Inherit
+  
+  + parent_abstract_entry:Expanded ENTRY;
+    
+Section Public//ENTRY, EXT2
+
+  + type_code:UINTEGER_8;
+  
+  + inode:INODE;
+  
+  + no_inode:UINTEGER_32:=0;
+  
+  - make_inode <-
+  ( 
+    + block_group:UINTEGER_32;
+    + index,inode_block:UINTEGER_32;
+    + partition:PARTITION_EXT2;
+    + pos:UINTEGER_32;
+    + buf:FAST_ARRAY(UINTEGER_8);
+    + group_desc:GROUP_DESCRIPTOR;
+    
+    partition ?= FILE_SYSTEM.get_partition Self;
+    block_group:=(no_inode-1)/partition.nb_inodes_per_group;
+    index:=(no_inode-1)%partition.nb_inodes_per_group;
+    
+    pos:=GROUP_DESCRIPTOR.size*block_group;
+    partition.set_block 2;
+    partition.read;
+    buf:=FAST_ARRAY(UINTEGER_8).create_with_capacity (GROUP_DESCRIPTOR.size);
+    pos.to (pos+GROUP_DESCRIPTOR.size)do{i:UINTEGER_32;
+      buf.add_last (partition.buffer.item i);
+    };
+    group_desc:=CONVERT(NATIVE_ARRAY(UINTEGER_8),GROUP_DESCRIPTOR).on (buf.to_native_array);
+    
+    pos:=INODE.size*index;
+    inode_block:=pos/partition.block_size;
+    partition.set_block (group_desc.get_inode_table+inode_block);
+    partition.read;
+    pos:=pos%partition.block_size;
+    buf:=FAST_ARRAY(UINTEGER_8).create_with_capacity (INODE.size);
+    pos.to (pos+INODE.size-1) do {i:UINTEGER_32;
+      buf.add_last (partition.buffer.item i);
+    };
+    inode:=CONVERT(NATIVE_ARRAY(UINTEGER_8),INODE).on (buf.to_native_array);
+  );
+  
+  - create p:ABSTRACT_STRING :BOOLEAN <-
+  (
+    set_path p;
+    TRUE
+  );
+  
+  - find_inode_for_size s:INTEGER <-
+  (
+    + block_group,first:UINTEGER_32;
+    + partition:PARTITION_EXT2;
+    + buf:FAST_ARRAY(UINTEGER_8);
+    + inode_buf:NATIVE_ARRAY(UINTEGER_8);
+    + inode_buf16:NATIVE_ARRAY(UINTEGER_16);
+    + inode_buf32:NATIVE_ARRAY(UINTEGER_32);
+    + group_desc:GROUP_DESCRIPTOR;
+    + pos,keep:INTEGER;
+    + bitmap,bitmap1:UINTEGER_8;
+    + found:BOOLEAN;
+    
+    partition ?= FILE_SYSTEM.get_partition Self;
+    block_group := 0;
+    partition.set_block 2;
+    buf:=FAST_ARRAY(UINTEGER_8).create_with_capacity (GROUP_DESCRIPTOR.size);
+    inode_buf := NATIVE_ARRAY(UINTEGER_8).create (INODE.size);
+    inode_buf16 := CONVERT(NATIVE_ARRAY(UINTEGER_8),NATIVE_ARRAY(UINTEGER_16)).on inode_buf;
+    inode_buf32 := CONVERT(NATIVE_ARRAY(UINTEGER_8),NATIVE_ARRAY(UINTEGER_32)).on inode_buf;
+    partition.read;
+    {
+      pos:=GROUP_DESCRIPTOR.size*block_group;
+      pos.to (pos+GROUP_DESCRIPTOR.size) do { i:INTEGER;
+        buf.add_last (partition.buffer.item i);
+      };
+      
+      group_desc:=CONVERT(NATIVE_ARRAY(UINTEGER_8),GROUP_DESCRIPTOR).on (buf.to_native_array);
+      
+      (s < SUPERBLOCK.get_block_log_size*group_desc.get_free_blocks_count).if {
+        (group_desc.get_free_inodes_count >= 1).if {
+          partition.set_block (group_desc.get_inode_bitmap);
+          partition.read;
+          pos := 0;
+          no_inode := 0;
+          {
+            // search for contigous blocks for size s
+            first := find_contiguous_blocks group_desc size s;
+            (first != -1).if {
+              // search of first free inode in block group
+              bitmap := partition.buffer.item pos;
+              (bitmap != 0FFh).if {              
+                keep := no_inode;
+                bitmap1 := bitmap;
+                {bitmap.is_odd}.while_do {
+                  bitmap := bitmap >> 1;
+                  no_inode := no_inode + 1;
+                };
+                (keep != no_inode-8).if {
+                  found := TRUE;
+                  bitmap1 := (bitmap1<<1)|1;          
+                  partition.buffer.put bitmap1 to pos;
+                  partition.set_block (group_desc.get_inode_bitmap);
+                  partition.write;
+                };
+              } else {
+                no_inode := no_inode + 8;
+              };
+              pos := pos + 1;
+            }; 
+          }.do_while {(bitmap = 0) && {pos < 512}};
+        };
+      };
+      block_group := block_group + 1;
+      buf.clear;
+    }.do_while {!found};
+    
+    no_inode := no_inode + (block_group-1) * partition.nb_inodes_per_group + 1;
+    // inode creation
+    (is_directory).if {
+      inode_buf16.put 04000h to 0;
+    } else {
+      inode_buf16.put 08000h to 0;
+    };
+    // i_blocks
+    inode_buf32.put (s*(SUPERBLOCK.get_block_log_size/512)) to 7;
+    // blocks
+    0.to (s.min(15)-1) do { k:INTEGER;
+      inode_buf32.put (group_desc.get_inode_table+214+first+k) to (10+k);
+    };
+    inode := CONVERT(NATIVE_ARRAY(UINTEGER_8),INODE).on inode_buf;
+  );
+  
+  - find_first_block gd:GROUP_DESCRIPTOR since start:INTEGER :INTEGER <-
+  ( + partition:PARTITION_EXT2;
+    + pos,first,ind:INTEGER;
+    + bitmap:UINTEGER_8;
+    
+    partition ?= FILE_SYSTEM.get_partition Self;
+    partition.set_block (gd.get_block_bitmap);
+    partition.read;
+    pos := start / 8 ;//0;
+    ind := start % 8 ;
+    {
+      bitmap := partition.buffer.item pos;
+      (pos = (start / SUPERBLOCK.get_block_log_size )).if {
+        0.to ind do {k:INTEGER;
+          bitmap := bitmap >> 1;
+        };
+        first := start;
+      };
+      (bitmap != 0FFh).if {              
+        {bitmap.is_odd}.while_do {
+          bitmap := bitmap >> 1;
+          first := first + 1;
+        };
+      } else {
+        first := first + 8;
+      };
+      pos := pos + 1;
+    }.do_while {(bitmap != 0FFh) && {pos < 512}};
+    (pos = 512).if {
+      first := -1;
+    };
+    first
+  );
+  
+  - find_contiguous gd:GROUP_DESCRIPTOR first ind:INTEGER size s:INTEGER :BOOLEAN <-
+  ( + pos,idx,bc1,rest:INTEGER;
+    + bitmap:UINTEGER_8;
+    + res:BOOLEAN;
+    + partition:PARTITION_EXT2;
+    
+    partition ?= FILE_SYSTEM.get_partition Self;
+    partition.set_block (gd.get_block_bitmap);
+    partition.read;
+    pos := ind / 8;
+    idx := ind % 8;
+    rest := s;
+    res := TRUE;
+    {
+      bitmap := partition.buffer.item pos;
+      (pos = (ind / 8 )).if {
+        0.to ind do {k:INTEGER;
+          bitmap := bitmap >> 1;
+        };
+        ind.to 8 do {
+          ((!bitmap.is_odd)&&{bc1 < block_count}).while_do {
+            bitmap := bitmap >> 1;
+            bc1 := bc1 + 1;
+          };
+        };
+      } else {
+        (rest >= 8).if {
+          (bitmap = 000h).if {
+            bc1 := bc1 + 8;
+          } else {
+            res := FALSE;
+          };
+        } else {
+          0.to rest do {k:INTEGER;
+            ((!bitmap.is_odd)&&{bc1 < block_count}).while_do {
+              bitmap := bitmap >> 1;
+              bc1 := bc1 + 1;
+            };
+          };
+        };
+      };
+      rest := s - bc1;
+      pos := pos + 1;
+    }.do_while {(rest != 0) && {res = TRUE}};
+    res
+  );
+ 
+  - find_contiguous_blocks gd:GROUP_DESCRIPTOR size s:INTEGER :INTEGER <-
+  ( + first,block_count:INTEGER;
+    + pos:UINTEGER_32;
+    + partition:PARTITION_EXT2;
+    
+    partition ?= FILE_SYSTEM.get_partition Self;
+    partition.set_block (gd.get_block_bitmap);
+    partition.read;
+    block_count := s / SUPERBLOCK.get_block_log_size;
+    (s % SUPERBLOCK.get_block_log_size != 0).if {
+      block_count := block_count + 1;
+    };
+    {
+      first := find_first_block gd since first;
+    }.do_while {(find_contiguous gd size block_count) && {first != -1}};
+    (first != -1).if {
+      pos := first / 8;
+      0.to ((8-(first%8)).min(block_count)) do { k:INTEGER;
+        partition.buffer.put ((partition.buffer.item pos<<1)|1) to pos ;
+        block_count := block_count - 1;
+      };
+      pos := pos + 1;
+      { block_count > 0 }.while_do {
+        0.to 8 do { k:INTEGER;
+          partition.buffer.put ((partition.buffer.item pos<<1)|1) to pos ;
+          block_count := block_count - 1;
+        };
+        pos :=pos + 1;
+      };
+      partition.write;
+    };
+    first
+  );
+  
+  
+Section Public  
+  //JHJH: cut into user,group, all rights
+  - access :UINTEGER_16 <- (inode.get_mode);
+  
+  - access_date:DATE <- DATE.create_with_sec (inode.get_atime);
+  - access_time:TIME <- TIME.create_with_sec (inode.get_atime);
+  
+  - update_date:DATE <- DATE.create_with_sec (inode.get_mtime);
+  - update_time:TIME <- TIME.create_with_sec (inode.get_mtime);
+  
+  - create_time:TIME <- TIME.create_with_sec (inode.get_ctime);
+  - create_date:DATE <- DATE.create_with_sec (inode.get_ctime);
+
+  - set_no_inode inode1:UINTEGER_32 <-
+  (
+    no_inode:=inode1;
+  );
+  
+  - get_no_inode :UINTEGER_32 <- no_inode;
+  
+  - set_type_code type_code1:UINTEGER_8 <-
+  (
+    type_code:=type_code1;
+  );
+
+  - get_type_code :UINTEGER_8 <- type_code;  
+  

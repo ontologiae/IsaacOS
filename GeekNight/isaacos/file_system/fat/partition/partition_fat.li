@@ -1,0 +1,49 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        := PARTITION_FAT;
+  
+  
+  - bibliography:= "http://www.lisaac.org";
+  - author      := "Sonntag Benoit (benoit.sonntag@lisaac.org)";
+  - comment     := "Partition Hard disk.";
+  
+Section Inherit  
+  
+  + parent_directory_fat:Expanded DIRECTORY_FAT;
+  + parent_partition_fat:Expanded PARTITION;
+  
+Section Private
+  
+  + cluster:UINTEGER_32;
+   
+Section Public
+  //
+  // Cluster manager.
+  //
+
+  - set_cluster new:UINTEGER_32<- 
+  (
+    cluster := new;
+  );
+  
+  - new_cluster:UINTEGER_32<- deferred;
+    
+  - next_cluster:BOOLEAN <- deferred;  
+  
+  - new_next_cluster <- deferred;
+  

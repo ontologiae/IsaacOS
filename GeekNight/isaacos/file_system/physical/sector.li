@@ -1,0 +1,91 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name    := SECTOR;
+  
+  - bibliography:= "http://www.lisaac.org";
+  - author      := "Sonntag Benoit (benoit.sonntag@lisaac.org)";
+  - comment     := "Cache sector 4Ko";
+ 
+  - date    := "2003/05";
+  
+Section Inherit
+  
+  - parent_object:OBJECT := OBJECT;
+  
+Section Public
+  
+  //
+  // Creation.
+  //
+  
+  - create n:SECTOR :SELF <-
+  ( + result:SELF;
+    
+    result := SELF.clone;
+    result.make n;
+    result
+  );
+  
+  - make n:SECTOR <-
+  (
+    buffer := FAST_ARRAY(UINTEGER_8).create 4096;
+    page   := 0FFFFFFFFh;
+    next   := n;
+  );
+    
+  //
+  // Data.
+  //  
+  
+  + page:UINTEGER_32;
+  
+  + buffer:FAST_ARRAY(UINTEGER_8);
+  
+  + is_write:BOOLEAN;
+      
+  + next:SECTOR;
+  
+  //
+  // Set data.
+  //
+  
+  - set_page n:UINTEGER_32<-
+  (
+    page := n;
+  );
+  
+  - set_write b:BOOLEAN <-
+  (
+    is_write := b;
+  );
+  
+  - set_next n:SECTOR <-
+  (
+    next := n;
+  );
+  
+  //
+  // Buffer facility.
+  //
+  
+  - item idx:INTEGER :UINTEGER_8 <- buffer.item idx;
+  
+  - put elt:UINTEGER_8 to idx:INTEGER <- buffer.put elt to idx;
+  
+  
+  

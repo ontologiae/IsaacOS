@@ -1,0 +1,271 @@
+///////////////////////////////////////////////////////////////////////////////
+//                          Isaac Operating System                           //
+// 									     //
+//   This program is free software; you can redistribute it and/or modify    //
+//   it under the terms of the GNU General Public License as published by    //
+//   the Free Software Foundation; version 3 of the License.  		     //
+// 									     //
+//   This program is distributed in the hope that it will be useful, 	     //
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of 	     //
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 	     //
+//   GNU General Public License for more details. 			     //
+// 									     //
+// 			    http://www.lisaac.org			     //
+///////////////////////////////////////////////////////////////////////////////
+
+Section Header
+  
+  + name        :=BOOT;
+  
+  - bibliography:="http://www.lisaac.org";
+  - author      :="Sonntag Benoit (benoit.sonntag@lisaac.org)";
+  - comment     :="Boot sector.";
+  
+Section Inherit  
+  
+  - parent_object:OBJECT := OBJECT;
+  
+Section Mapping 
+  
+  + jump_0:UINTEGER_8;
+  + jump_1:UINTEGER_16;
+  
+  // OEM
+  + oem_00:CHARACTER;
+  + oem_01:CHARACTER;
+  + oem_02:CHARACTER;
+  + oem_03:CHARACTER;
+  + oem_04:CHARACTER;
+  + oem_05:CHARACTER;
+  + oem_06:CHARACTER;
+  + oem_07:CHARACTER;
+  
+  // Bios parameter block (BPB)
+  + bytes_per_sector:UINTEGER_16;
+  + get_sectors_per_cluster:UINTEGER_8; // 0Dh
+  + get_sectors_reserved:UINTEGER_16;    // OEh
+  + get_nb_fat:UINTEGER_8;              // 10h
+  + get_nb_root_entries:UINTEGER_16;     // 11h
+  + nb_sectors:UINTEGER_16;          // 13h
+  + descriptor:UINTEGER_8;          // 15h
+  + get_sectors_per_fat:UINTEGER_16;     // 16h
+  + sectors_per_track:UINTEGER_16;
+  + nb_head:UINTEGER_16;
+  + hidden_sectors:UINTEGER_32;  // 1Ch
+  + nb_sectors_big:UINTEGER_32;  // 20h
+  
+  // ( Fat 32bits )
+  + get_sectors_per_fat32:UINTEGER_32; // 24h : Nbr Sector per FAT - 1
+  + flags_fat:UINTEGER_16;        // 28h
+  + version_fat:UINTEGER_16;      // 2Ah
+  + get_cluster_start_root:UINTEGER_32;// 2Ch
+  + fs_info_sector:UINTEGER_16;   // 30h
+  + reserved_00:UINTEGER_16;
+  + reserved_01:UINTEGER_32;
+  + reserved_02:UINTEGER_32;
+  + reserved_03:UINTEGER_32;
+  
+  // Drive information
+  + bios_drive:UINTEGER_8;
+  + reserved_04:UINTEGER_8;
+  + ext_boot_signature:UINTEGER_8; // 29h
+  + serial_number:UINTEGER_32;
+  
+  + vol_label_00:CHARACTER;
+  + vol_label_01:CHARACTER;
+  + vol_label_02:CHARACTER;
+  + vol_label_03:CHARACTER;
+  + vol_label_04:CHARACTER;
+  + vol_label_05:CHARACTER;
+  + vol_label_06:CHARACTER;
+  + vol_label_07:CHARACTER;
+  + vol_label_08:CHARACTER;
+  + vol_label_09:CHARACTER;
+  + vol_label_10:CHARACTER;
+  
+  + fs_label_00:CHARACTER;
+  + fs_label_01:CHARACTER;
+  + fs_label_02:CHARACTER;
+  + fs_label_03:CHARACTER;
+  + fs_label_04:CHARACTER;
+  + fs_label_05:CHARACTER;
+  + fs_label_06:CHARACTER;
+  + fs_label_07:CHARACTER;
+  
+  // Isaac data
+  
+  + sector_cluster:UINTEGER_32; // First cluster position.
+  + sector_root   :UINTEGER_32; // Root position.
+  + sector_fat    :UINTEGER_32; // FAT position.
+  + cluster       :UINTEGER_32; // Cluster current.
+
+  + code000       :UINTEGER_64;
+  + code001       :UINTEGER_64;
+  + code002       :UINTEGER_64;
+  + code003       :UINTEGER_64;
+  + code004       :UINTEGER_64;
+  + code005       :UINTEGER_64;
+  + code006       :UINTEGER_64;
+  + code007       :UINTEGER_64;
+  + code008       :UINTEGER_64; 
+  + code009       :UINTEGER_64;
+  + code010       :UINTEGER_64;
+  + code011       :UINTEGER_64;
+  + code012       :UINTEGER_64;
+  + code013       :UINTEGER_64;
+  + code014       :UINTEGER_64;
+  + code015       :UINTEGER_64;
+  + code016       :UINTEGER_64;
+  + code017       :UINTEGER_64;
+  + code018       :UINTEGER_64;
+  + code019       :UINTEGER_64;
+  + code020       :UINTEGER_64;
+  + code021       :UINTEGER_64;
+  + code022       :UINTEGER_64;
+  + code023       :UINTEGER_64;
+  + code024       :UINTEGER_64;
+  + code025       :UINTEGER_64;
+  + code026       :UINTEGER_64;
+  + code027       :UINTEGER_64;
+  + code028       :UINTEGER_64;
+  + code029       :UINTEGER_64;
+  + code030       :UINTEGER_64;
+  + code031       :UINTEGER_64;
+  + code032       :UINTEGER_64;
+  + code033       :UINTEGER_64;
+  + code034       :UINTEGER_64;
+  + code035       :UINTEGER_64;
+  + code036       :UINTEGER_64;
+  + code037       :UINTEGER_64;
+  + code038       :UINTEGER_64;
+  + code039       :UINTEGER_64;
+  + code040       :UINTEGER_64;
+  + code041       :UINTEGER_64;
+  + code042       :UINTEGER_64;
+  + code043       :UINTEGER_64;
+  + code044       :UINTEGER_64;
+  + code045       :UINTEGER_64;
+  + code046       :UINTEGER_64;
+  + code047       :UINTEGER_64; 
+  + code048       :UINTEGER_64;
+  + code049       :UINTEGER_64;
+  + code050       :UINTEGER_32;
+  + code051       :UINTEGER_16;
+  
+Section Public  
+  
+  - vol_label:STRING <-
+  ( + result:STRING;
+    
+    result := STRING.create 11;
+    result.add_last vol_label_00;
+    result.add_last vol_label_01;
+    result.add_last vol_label_02;
+    result.add_last vol_label_03;
+    result.add_last vol_label_04;
+    result.add_last vol_label_05;
+    result.add_last vol_label_06;
+    result.add_last vol_label_07;
+    result.add_last vol_label_08;
+    result.add_last vol_label_09;
+    result.add_last vol_label_10;
+    result
+  );
+ 
+  
+  - is_fat32:BOOLEAN <- (ext_boot_signature=29h);
+  
+  - put_isaac_data begin_partition:UINTEGER_32 drive drv:UINTEGER_8 <-
+  // Static Compute `sector_cluster', `sector_root' and `sector_fat'.
+  (
+    bios_drive:=drv;
+    sector_fat:=begin_partition+sectors_reserved;
+  
+    (is_fat32).if {
+      sector_root:=sector_fat+sectors_per_fat32 * nb_fat;
+    } else {
+      sector_root:=sector_fat+sectors_per_fat * nb_fat;
+    };
+    
+    sector_cluster:=sector_root+(nb_root_entries>>4)-(sectors_per_cluster*2);
+    
+    "\nBegin Part\t: ".print;      begin_partition.print;
+    "\nSector FAT\t: ".print;      sector_fat.print;
+    "\nSector Root\t: ".print;     sector_root.print;
+    "\nSector cluster\t: ".print;  sector_cluster.print;
+    '\n'.print;
+  );
+  
+  - print <-
+  ( 
+    
+    "\nOEM\t\t: ".print;
+    oem_00.print;
+    oem_01.print;
+    oem_02.print;
+    oem_03.print;
+    oem_04.print;
+    oem_05.print;
+    oem_06.print;
+    oem_07.print;
+
+    "\nBios parameter block (BPB):".print;
+    "\n  Bytes per sector\t: ".print;    bytes_per_sector.print;
+    "\n  Sectors per cluster\t: ".print; sectors_per_cluster.print;
+    "\n  Sectors reserved\t: ".print;    sectors_reserved.print;
+    "\n  Number FAT\t\t: ".print;          nb_fat.print;
+    "\n  Number root entries\t: ".print; nb_root_entries.print;
+    "\n  Number sectors\t: ".print;      nb_sectors.print;
+    "\n  Descriptor media\t: ".print;    descriptor.to_hexadecimal.print; 'h'.print;
+    "\n  Sectors per FAT\t: ".print;     sectors_per_fat.print;
+    "\n  Sectors per track\t: ".print;   sectors_per_track.print;
+    "\n  Number head\t\t: ".print;         nb_head.print;
+    "\n  Hidden sectors\t: ".print;      hidden_sectors.print;
+    "\n  Number sectors big\t: ".print;  nb_sectors_big.print; 
+    " (".print; (nb_sectors_big>>11).print; " MB)".print;
+    
+    (is_fat32).if {
+      "\nFAT 32 bits:".print;
+      "\n  Sectors per FAT\t: ".print;     (sectors_per_fat32+1).print;
+      "\n  Flags FAT\t\t: ".print;           flags_fat.to_hexadecimal.print; 'h'.print;
+      "\n  Version FAT\t\t: ".print;         version_fat.print;
+      "\n  Cluster start root\t: ".print;  cluster_start_root.print;
+      
+      "\nDrive information:".print;
+      "\n  Bios drive\t\t: ".print;          bios_drive.to_hexadecimal.print; 'h'.print;
+      "\n  Ext. boot signature\t: ".print; ext_boot_signature.to_hexadecimal.print; 'h'.print;
+      "\n  Serial number\t\t: ".print;       serial_number.to_hexadecimal.print; 'h'.print;
+      
+      "\n  Volume label\t\t: ".print;
+      vol_label_00.print;
+      vol_label_01.print;
+      vol_label_02.print;
+      vol_label_03.print;
+      vol_label_04.print;
+      vol_label_05.print;
+      vol_label_06.print;
+      vol_label_07.print;
+      vol_label_08.print;
+      vol_label_09.print;
+      vol_label_10.print;
+      
+      "\n  File system\t\t: ".print;
+      fs_label_00.print;
+      fs_label_01.print;
+      fs_label_02.print;
+      fs_label_03.print;
+      fs_label_04.print;
+      fs_label_05.print;
+      fs_label_06.print;
+      fs_label_07.print;
+    };
+    '\n'.print;
+  );
+
+ - sectors_per_cluster:UINTEGER_8<-get_sectors_per_cluster; // 0Dh
+ - sectors_reserved:UINTEGER_16<-get_sectors_reserved;    // OEh
+ - nb_fat:UINTEGER_8<-get_nb_fat;              // 10h
+ - sectors_per_fat:UINTEGER_16<- get_sectors_per_fat;     // 16h
+ - nb_root_entries:UINTEGER_16<-get_nb_root_entries;     // 11h
+ - sectors_per_fat32:UINTEGER_32<-get_sectors_per_fat32; // 24h : Nbr Sector per FAT - 1
+ - cluster_start_root:UINTEGER_32<-get_cluster_start_root;// 2Ch

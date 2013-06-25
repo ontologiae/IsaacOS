@@ -1,0 +1,11 @@
+#!/bin/bash
+
+cd ..
+# cp newlive.img iso3/ISAAC.IMG
+cp isaacsmall.img iso/ISAAC.IMG
+# cp isaaclive.img.good iso3/ISAAC.IMG
+mkisofs -R -V ISAACOSLIVE -b grldr -no-emul-boot -boot-load-size 4 -o isaac.iso iso
+# mkisofs -R -b grldr -no-emul-boot -boot-load-seg 0x1000  -boot-info-table -o isaac.iso iso3
+# mkisofs -R -b ISAAC.IMG -hard-disk-boot -boot-load-seg 0x7C0 -boot-info-table -o isaac.iso iso3
+/usr/bin/qemu -boot d -m 512 -hda ~/svn/isaacos/trunk/linux-0.2.img -cdrom ~/svn/isaacos/trunk/isaac.iso -net nic,vlan=0 -net user,vlan=0 -localtime -no-kqemu &
+cd isaacos

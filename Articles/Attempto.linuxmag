@@ -288,6 +288,11 @@ On peut disposer de l'AST d'un DRS en utilisant le REPL OCaml. Le projet est con
 7. Générer du code à partir d'une phrase
 ----------------------------------------
 
+
+Introduction au pattern matching ocaml
+++++++++++++++++++++++++++++++++++++++
+
+
 Une fois le DRS parsé, nous allons pouvoir inférer ce que l'on désir à partir de l'arbre syntaxique obtenu.
 Pour ce faire, nous allons user et abuser d'une fonctionnalité majeure d'OCaml (et de ses cousins Scala et Haskell) : le pattern matching.
 Le pattern matching est une sorte de switch case dopé aux stéroïdes. Si vous êtes habitués aux Enums de Java, disons que c'est la possibilité de donner des paramètres à enum et de se définir récursivement.
@@ -346,6 +351,37 @@ Boite de dialogue
  	$( id ).dialog();
   }
 
+type widget = 
+| DialogSimple of nom * contenu 
+| DialogForm  of  nom * contenu * height * width * bool * (string * fonction) list
+| Slider      of  nom * int * int * fonction 
+
+
+type fonction = Fonction of nom option * var list * expre list * expre (* nom, params, expres contenus, return*) 
+and
+expre =
+| Length of expre 
+| Str of string
+| Nbr of string
+| Bool of bool
+| Re  of string 
+| Affect of var * expr
+| ReMatchVar of var * var
+| StringEqual of expre * expre
+| NbrEqual    of expre * expre
+| BoolEqual   of expre * expre
+| Show    of nom * widget (* nom du widget *)
+| Nop
+| If  of expre * expre * expre (* Attention, c'est une expression*)
+
+exemple
+function checkNumDeTel(tel) {
+ var re = /[0-9] [0-9]{2} [0-9]{2} [0-9]{2} [0-9]{2}$/;
+ return re.test(tel);
+}
+
+Fonction (Some "checkNumDeTel",["tel"],[Affect("re",Re "[0-9] [0-9]{2} [0-9]{2} [0-9]{2} [0-9]{2}$")], ReMatchVar("re","tel")
+ 
 
 Slider
 ++++++
@@ -358,11 +394,99 @@ Slider
     }
 
 
+| Slider of nom * min * max * fonction
 
 
 
 9. Génération
 -------------
+
+Petit Programme
++++++++++++++++
+
+On défini un Slider allant de 1 à 3, chaque déplacement affiche un dialog qui affiche un message
+
+let widgets = [
+	Slider ("slider1",1,3, Fonction(None, ["idx"], [ Show "dialogSlideCHange"], Nop) );
+	DialogSimple ("dialogSlideCHange", "Le slider a été modifié")
+];;
+
+let program = [
+Show ("slider1","slider");
+]
+
+
+Doit génerer
+
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>jQuery UI Slider - Snap to increments</title>
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.1/themes/base/jquery-ui.css" />
+<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="http://code.jquery.com/ui/1.10.1/jquery-ui.js"></script>
+<link rel="stylesheet" href="/resources/demos/style.css" />
+<script>
+$(function() {
+ $( "#slider" ).slider({
+	value:0,
+	min: 1,
+	max: 3,
+	slide: function( event, ui ) {
+		$("#dialogSlideCHange").dialog();
+	}
+	});
+});
+
+</script>
+</head>
+<body>
+	<div id="slider"></div>
+	<div id="dialogSlideCHange" title="Basic dialog">
+		<p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the 'x' icon.</p>
+	</div>
+</body>
+</html>
+
+
+le générateur
++++++++++++++
+
+let entete = "...";;
+let build_onload core = 	Printf.sprintf "$(function() { \n %s\n }";;
+
+
+
+let rec to_widget_js code = match code with
+| Fonction  (nom, varlist, exprelist, expreReturn) -> k
+and to_widgt wdgt = match wdgt with
+| 
+and to_expre =
+| Length  expre -> (to_expre expre)^".length"
+| Str s         -> s
+| Nbr i   	-> string_of_int i 
+| Bool b        -> string_of_bool b
+| Re s 		-> "/"^s^"/"
+| Affect (v,e)  -> v ^" = "^(to_expre e)^";"
+| ReMatchVar(v,v2) 	-> v^".test("^v2^")"
+| StringEqual (e1,e2) 	-> e1^" === "^e2
+| NbrEqual    (e1,e2) 	-> e1^" === "^e2
+| BoolEqual   (e1,e2) 	-> e1^" === "^e2
+| Show    (nom,wdgt)  	-> let widget = match typew with
+					| Slider _ -> "slider"
+					| DialogSimple _ -> "dialog"
+					| DialogForm   _ -> "dialog" in
+			   let declare_wdgt = declare_widget wdgt in 
+		Printf.sprintf " $('#%s').%s(\n\t%s\n\t)" nom widget wdgt 
+| Nop  -> ""
+| If  (test,if_case,else_case) -> Printf.sprintf  " (%s) ? %s : %s;" (to_expre test) (to_expre if_case) (to_expre else_case)
+
+and  declare_widget w = 
+	match w with
+| Slider (nom, min, max, code) -> Printf.sprintf  "{ min:%s, max:%s , slide: %s } (string_of_int min) (string_of_int max) (to_js)
+| DialogSimple of nom * contenu 
+| DialogForm  of  nom * contenu * height * width * bool * (string * fonction) list
+
 
 Objectif
 ++++++++

@@ -1,0 +1,13 @@
+
+if [ "$1" = "c" ]; then
+mount /mnt/isaacsmall
+cp $2 /mnt/isaacsmall/$3
+umount /mnt/isaacsmall
+fi
+if [ "$1" = "e" ]; then
+/usr/bin/qemu -boot c -m 256 -hda isaacsmall.img  -net nic,vlan=0 -net user,vlan=0 -localtime &
+fi
+if [ "$1" = "" ]; then
+echo c for copy 
+echo e qemu
+fi
